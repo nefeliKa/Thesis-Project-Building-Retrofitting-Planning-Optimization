@@ -20,6 +20,8 @@ class House(Env):
         self.observation_space = spaces.Discrete(self.num_states)
         self.current_state = 0
         self.time = 0
+        self.num_years = 50
+        self.time_step = 5
 
         self.state_transition_model = House.get_state_transition_model(num_actions=num_actions,
                                                                        state_space=self.state_space)
@@ -79,6 +81,60 @@ class House(Env):
         price_kwh = 0.35
         return price_kwh * num_of_kwh
 
+    def get_reward(self, action: int, current_state: int) -> float:
+        action_costs = self.renovation_costs[action]
+
+        energy_demand_roof = self.energy_demand_nominal[0] * (1 + self.degradation_rates[self.state_space[current_state][0]])
+        energy_demand_wall = self.energy_demand_nominal[1] * (1 + self.degradation_rates[self.state_space[current_state][1]])
+        energy_demand_cellar = self.energy_demand_nominal[2] * (1 + self.degradation_rates[self.state_space[current_state][2]])
+        total_energy_demand = energy_demand_roof + energy_demand_wall + energy_demand_wall
+
+        energy_bills = (House.energy2euros(energy_demand_roof) +
+                        House.energy2euros(energy_demand_wall) +
+                        House.energy2euros(energy_demand_cellar))
+        energy_bills = energy_bills * self.house_size_m2
+
+        net_cost = action_costs + energy_bills
+        reward = -net_cost
+
+        return reward
+
+    def get_transition_probs(self, current_state: int, action: int, time: int) -> tuple[list, int]:
+        """
+        MDP model for the environment.
+        Parameters
+        ----------
+        current_state : int
+            The current state index.
+        action : int
+            The action index.
+        time : int
+            The current time in the episode.
+        Returns
+        -------
+        transition_probs : array
+            The transition probabilities for next states.
+        next_state : int
+            The next state index.
+        reward : float
+            The reward from taking the action.
+        """
+        transition_probabilities = []
+
+        # Check if episode should terminate due to time limit
+        if time >= self.num_years:
+            return transition_probabilities, time
+
+        for s_ in range(self.num_states):
+            next_state = s_
+            prob = self.state_transition_model[action][current_state][s_]
+            reward = self.get_reward(action=action, current_state=current_state)
+
+            transition_probabilities.append((prob, next_state, reward))
+
+        time += self.time_step
+        return transition_probabilities, time
+
     def reset(self):
         """
         Resets the environment to its initial state.
@@ -112,34 +168,17 @@ class House(Env):
         # Get transition probabilities, next state, and reward
 
         # Update time
-        self.time += 5
+        self.time += self.time_step
 
         # Choose next state based on transition probabilities
         next_state = np.random.choice(self.num_states, p=self.state_transition_model[action][self.current_state])
 
         # Calculate state reward
-        def get_reward(action, current_state):
-            action_costs = self.renovation_costs[action]
 
-            energy_demand_roof = self.energy_demand_nominal[0] * (1 + self.degradation_rates[self.state_space[current_state][0]])
-            energy_demand_wall = self.energy_demand_nominal[1] * (1 + self.degradation_rates[self.state_space[current_state][1]])
-            energy_demand_cellar = self.energy_demand_nominal[2] * (1 + self.degradation_rates[self.state_space[current_state][2]])
-            total_energy_demand = energy_demand_roof + energy_demand_wall + energy_demand_wall
-
-            energy_bills = (self.energy2euros(energy_demand_roof) +
-                            self.energy2euros(energy_demand_wall) +
-                            self.energy2euros(energy_demand_cellar))
-            energy_bills = energy_bills * self.house_size_m2
-
-            net_cost = action_costs + energy_bills
-            reward = -net_cost
-
-            return reward
-
-        reward = get_reward(action,self.current_state)
+        reward = self.get_reward(action, self.current_state)
 
         # Check if episode is done (time limit reached)
-        done = self.time >= 50
+        done = self.time >= self.num_years
 
         return next_state, reward, done, {}
 

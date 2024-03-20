@@ -1,5 +1,6 @@
 from gym import Env
 from house import House
+from value_iteration import value_iteration
 
 
 def run_episodes(env: Env, policy: list = None) -> list:
@@ -31,5 +32,17 @@ def run_episodes(env: Env, policy: list = None) -> list:
 
 if __name__ == "__main__":
 
+    env = House()
+
     # Evaluate random policy
-    run_episodes(env=House(), policy=None)
+    total_costs_random_policy = run_episodes(env=env, policy=None)
+
+    # Evaluate using value iteration
+    env.reset()
+    optimal_policy, optimal_value = value_iteration(env)
+
+    total_costs_value_iteration = run_episodes(env=env, policy=optimal_policy)
+
+    print("\t\t##### Returns per episode #####\n")
+    print(f"Random policy: {total_costs_random_policy}")
+    print(f"Optimal policy (value iteration): {total_costs_value_iteration}")

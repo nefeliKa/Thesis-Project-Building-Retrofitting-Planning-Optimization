@@ -1,41 +1,59 @@
 import gym
 import numpy as np
-
-env = gym.make('FrozenLake-v0')
-env.render()
+from house import House
 
 
-def value_iteration(env):
-    num_iterations = 1000
-    threshold = 1e-20
-    gamma = 1.0
-    value_table = np.zeros(env.observation_space.n)
+def value_iteration(env: House, discount_factor=0.9, theta=1e-9, max_iter=1000):
+    """
+    Value Iteration Algorithm.
+    Parameters
+    ----------
+    env : gym.Env
+        The Gym environment.
+    discount_factor : float
+        The discount factor for future rewards.
+    theta : float
+        A very small positive number to decide whether to stop iterations.
+    max_iter : int
+        Maximum number of iterations.
+    Returns
+    -------
+    policy : np.array
+        Array of optimal action for each state.
+    V : np.array
+        Array of value for each state.
+    """
+    # Initialize value function
+    V = np.zeros(env.observation_space.n)
 
-    for i in range(num_iterations):
-        updated_value_table = np.copy(value_table)
-
-        for s in range(env.observation_space.n):
-            Q_values = [sum([prob * (r + gamma * updated_value_table[s_])
-                             for prob, s_, r, _ in env.P[s][a]]) for a in range(env.action_space.n)]
-            value_table[s] = max(Q_values)
-
-        if np.sum(np.fabs(updated_value_table - value_table)) <= threshold:
+    for i in range(max_iter):
+        delta = 0
+        for state in range(env.observation_space.n):
+            # Calculate the expected value of each action
+            action_values = np.zeros(env.action_space.n)
+            for action in range(env.action_space.n):
+                transitions = env.get_transition_probs(state, action, 0)[0]
+                for prob, next_state, reward in transitions:
+                    action_values[action] += prob * (reward + discount_factor * V[next_state])
+            # Choose the best action
+            best_action_value = np.max(action_values)
+            # Calculate the difference between current value and new value
+            delta = max(delta, np.abs(best_action_value - V[state]))
+            # Update the value function
+            V[state] = best_action_value
+        # Check if the change in value function is small enough
+        if delta < theta:
             break
-    return value_table
 
+    # Extract policy
+    policy = np.zeros(env.observation_space.n, dtype=int)
+    for state in range(env.observation_space.n):
+        action_values = np.zeros(env.action_space.n)
+        for action in range(env.action_space.n):
+            transitions = env.get_transition_probs(state, action, 0)[0]
+            for prob, next_state, reward in transitions:
+                action_values[action] += prob * (reward + discount_factor * V[next_state])
+        best_action = np.argmax(action_values)
+        policy[state] = best_action
 
-def extract_policy(value_table):
-    gamma = 1.0
-    policy = np.zeros(env.observation_space.n)
-
-    for s in range(env.observation_space.n):
-        Q_values = [sum([prob * (r + gamma * value_table[s_])
-                         for prob, s_, r, _ in env.P[s][a]]) for a in range(env.action_space.n)]
-
-        policy[s] = np.argmax(np.array(Q_values))
-    return policy
-
-
-optimal_value_function = value_iteration(env)
-optimal_policy = extract_policy(optimal_value_function)
-print(optimal_policy)
+    return policy, V
