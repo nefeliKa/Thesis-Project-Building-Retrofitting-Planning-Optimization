@@ -1,5 +1,5 @@
 from gym import Env
-from MDP2 import RenovationEnv
+from house import House
 
 
 def run_episodes(env: Env, policy: list = None) -> list:
@@ -32,4 +32,4 @@ def run_episodes(env: Env, policy: list = None) -> list:
 if __name__ == "__main__":
 
     # Evaluate random policy
-    run_episodes(env=RenovationEnv(), policy=None)
+    run_episodes(env=House(), policy=None)
