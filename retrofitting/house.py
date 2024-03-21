@@ -28,11 +28,12 @@ class House(Env):
         self.house_size_m2 = house_size_m2
 
         # [cost_doNothing, cost_roof, cost_wall, cost_cellar]
-        self.renovation_costs = np.array([0, 2000, 5000, 3000])  # TODO: should change according to m2
+        self.renovation_costs = np.array([0, 200, 500, 300])  # TODO: should change according to m2
 
         # [roof, wall, cellar]
         self.energy_demand_nominal = [57, 95, 38]
         self.degradation_rates = [0.0, 0.2, 0.4]
+
     @staticmethod
     def get_state_space(num_damage_states: int):
         state_space = {}
@@ -87,11 +88,9 @@ class House(Env):
         energy_demand_roof = self.energy_demand_nominal[0] * (1 + self.degradation_rates[self.state_space[current_state][0]])
         energy_demand_wall = self.energy_demand_nominal[1] * (1 + self.degradation_rates[self.state_space[current_state][1]])
         energy_demand_cellar = self.energy_demand_nominal[2] * (1 + self.degradation_rates[self.state_space[current_state][2]])
-        total_energy_demand = energy_demand_roof + energy_demand_wall + energy_demand_wall
+        total_energy_demand = energy_demand_roof + energy_demand_wall + energy_demand_cellar
 
-        energy_bills = (House.energy2euros(energy_demand_roof) +
-                        House.energy2euros(energy_demand_wall) +
-                        House.energy2euros(energy_demand_cellar))
+        energy_bills = House.energy2euros(total_energy_demand)
         energy_bills = energy_bills * self.house_size_m2
 
         net_cost = action_costs + energy_bills
@@ -99,9 +98,9 @@ class House(Env):
 
         return reward
 
-    def get_transition_probs(self, current_state: int, action: int, time: int) -> tuple[list, int]:
+    def get_transition_probs(self, current_state: int, action: int, time: int):
         """
-        MDP model for the environment.
+        Function that calculates probabilities.
         Parameters
         ----------
         current_state : int
@@ -125,9 +124,8 @@ class House(Env):
         if time >= self.num_years:
             return transition_probabilities, time
 
-        for s_ in range(self.num_states):
-            next_state = s_
-            prob = self.state_transition_model[action][current_state][s_]
+        for next_state in range(self.num_states):
+            prob = self.state_transition_model[action][current_state][next_state]
             reward = self.get_reward(action=action, current_state=current_state)
 
             transition_probabilities.append((prob, next_state, reward))
@@ -179,6 +177,7 @@ class House(Env):
 
         # Check if episode is done (time limit reached)
         done = self.time >= self.num_years
+        self.current_state = next_state
 
         return next_state, reward, done, {}
 
