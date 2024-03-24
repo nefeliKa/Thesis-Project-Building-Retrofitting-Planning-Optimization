@@ -28,7 +28,7 @@ class House(Env):
         self.house_size_m2 = house_size_m2
 
         # [cost_doNothing, cost_roof, cost_wall, cost_cellar]
-        self.renovation_costs = np.array([0, 200, 500, 300])  # TODO: should change according to m2
+        self.renovation_costs = np.array([0, 2000, 5000, 3000])  # TODO: should change according to m2
 
         # [roof, wall, cellar]
         self.energy_demand_nominal = [57, 95, 38]
@@ -75,6 +75,11 @@ class House(Env):
                     new_probability = np.prod(future_states_probabilities)
                     row.append(new_probability)
                 STATE_TRANSITION_MODEL[action][key] = row
+        # Define the file path where you want to save the array
+        file_path = 'my_array.npy'
+
+        # Save the array to the specified file
+        np.save(file_path, STATE_TRANSITION_MODEL)
         return STATE_TRANSITION_MODEL
 
     @staticmethod

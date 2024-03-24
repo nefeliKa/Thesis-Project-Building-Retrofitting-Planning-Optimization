@@ -89,6 +89,12 @@ def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states:
 
     plt.grid()
     plt.show()
+#TODO :
+    #Plot a histogram with the energy bills, the actions that are taken and the time 
+    #Clean the means/variance code and make it into a function 
+    #Make comments under each function 
+
+        
 
 
 if __name__ == "__main__":
@@ -113,5 +119,33 @@ if __name__ == "__main__":
     plot_costs_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[0], states_all_episodes_value_iteration[0], plot_title='Value Iteration')
 
     print(f"Number of iterations for optimal policy: {num_iterations}")
+    print(f"The optimal policy is: {optimal_policy}")
     plot_histogram_comparisons(total_costs_zero_policy, total_costs_value_iteration)
+
+    #find the mean and the variance of each policy'
+    #mean = policy1+policy2+policy3+...policyn / n
+    #subtract the mean from each policy variance :v1= (mean - policy1)^2
+    #variance = v1 + v2 +v3 +...vn / n
+    mean_zero_policy = sum(total_costs_zero_policy)/ len(total_costs_zero_policy)
+    mean_zero_variance = []
+    for value in range(len(total_costs_zero_policy)): 
+        variance = (mean_zero_policy - total_costs_zero_policy[value])**2
+        mean_zero_variance.append(variance)
+    mean_zero_variance = sum(mean_zero_variance)/len(mean_zero_variance)
+    mean_zero_variance = np.sqrt(mean_zero_variance)
+
+    #find mean and variance for optimal policy
+    mean_optimal_policy = sum(total_costs_value_iteration)/ len(total_costs_value_iteration)
+    mean_optimal_variance = []
+    for value in range(len(total_costs_value_iteration)): 
+        optimal_variance = (mean_optimal_policy - total_costs_value_iteration[value])**2
+        mean_optimal_variance.append(optimal_variance)
+    mean_optimal_variance = sum(mean_optimal_variance)/len(mean_optimal_variance)
+    mean_optimal_variance = np.sqrt(mean_optimal_variance)
+
+    print(f"The mean return of optimal policy is: {mean_optimal_policy}. The variance is:{mean_optimal_variance} ")
+
+    print(f"The mean return of zero policy is: {mean_zero_policy}. The variance is:{mean_zero_variance} ")
+
+
 

@@ -18,7 +18,7 @@ def value_iteration(env: House, discount_factor=0.97):
         num_iterations += 1
         delta = 0
 
-        # ignore terminal states, since value is 0
+        
         for idx_state in range(env.num_states):
             old_value = value_function[idx_state]
 
@@ -39,3 +39,21 @@ def value_iteration(env: House, discount_factor=0.97):
             delta = max([delta, np.abs(old_value - value_function[idx_state])])
 
     return optimal_action, value_function, num_iterations
+
+
+
+
+# def extract_policy(env,value_table, gamma = 1.0):
+#     policy = np.zeros(env.observation_space.n)
+#     for state in range(env.observation_space.n):
+#         Q_table = np.zeros(env.action_space.n)
+#         for action in range(env.action_space.n):
+#             for next_sr in env.P[state][action]:
+#                 trans_prob, next_state, reward_prob, _ = next_sr
+#                 Q_table[action] += (trans_prob * (reward_prob + gamma *
+#                 value_table[next_state]))
+#                 policy[state] = np.argmax(Q_table)
+#                 return policy
+#     optimal_value_function = value_iteration(env=env,gamma=1.0)
+#     optimal_policy = extract_policy(optimal_value_function, gamma=1.0)
+#     print(optimal_policy)
