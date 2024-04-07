@@ -6,6 +6,11 @@ import esoreader
 import eppy
 import os
 
+
+
+#TODO: MAKE LOOPS AND DATAFRAME, SIMULATE ALL SCENARIOS, ADD ACTUAL MATERIAL DATA, CHECK THE WINDOWS, CHECK THE HVAC
+
+
 ########################################CONFIGURATION######################################
 # Set the idd file and idf file path
 iddfile = 'C:\EnergyPlusV23-2-0\Energy+.idd'
@@ -19,7 +24,10 @@ idf = IDF(fname1)
 idf.epw = (r"C:\Users\Nefeli\Desktop\thesis_work\Codes\Thesis_Project\Weather_files\NLD_Amsterdam.062400_IWEC"
            r"\NLD_Amsterdam.062400_IWEC.epw")
 
-
+# Clean objects
+# idf.idfobjects.clear()
+block = idf.block
+del block
 
 # # Geometry
 idf.add_block(
@@ -32,46 +40,22 @@ idf.add_block(
     zoning='by_storey')
 idf.intersect_match()
 
-# Show 3D model
-# idf.view_model()
-#windows 
-idf.set_wwr(wwr=0.2)
 
 idf.set_default_constructions()
+
+#windows 
+
+idf.set_wwr(wwr=0.6, orientation= 'east', wwr_map={0:0} )
+idf.set_wwr(orientation= 'west', wwr_map={0:0} )
+
+
+# Show 3D model
+idf.view_model()
+
+
 # print(idf.idfobjects['CONSTRUCTION'])
 
 ##############Change info about the house
-
-# # Change glazing material
-# material_info = idf.idfobjects["WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM"][0]
-# material_info.Name = "Glass_Material"
-# material_info.UFactor = 2.5
-# material_info.Solar_Heat_Gain_Coefficient = 0.8
-# material_info.Visible_Transmittance = 0.8
-
-
-
-
-
-# # Set Glazing Contruction 
-# window_contruction = idf.idfobjects['CONSTRUCTION']
-# window_contruction.Outside_Layer = "Glass_Material"
-# print(window_contruction)
-
-# #set ceiling construcction and material
-# materials_list = idf.idfobjects['MATERIAL']
-# get_original_material = idf.idfobjects['MATERIAL'][0]
-# new_material = idf.copyidfobject(get_original_material)
-# new_material.Name = "ExteriorInsulation"
-# new_material.Conductivity = 5
-# new_material.Thickness = 0.1
-# # materials_list.append(new_material)
-
-# ceiling_construction = idf.idfobjects['CONSTRUCTION'][-3]
-# window_contruction.Outside_Layer = "DefaultMaterial"
-# idf.newidfobject("CONSTRUCTION", Name = "Roof_Structure",Outside_Layer = 'DefaultMaterial', Layer_2 = "ExteriorInsulation")
-# # print(ceiling_construction)
-
 # Change surfaces
 #######Windows
 window_materials =  idf.idfobjects['WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM']
@@ -83,8 +67,9 @@ del window_materials[0]
 # print(window_materials)
 
 
-#Insutlation 
+#######Add Insulation Material 
 insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorInsulation", Thickness = 0.2,Specific_Heat = 1000, Conductivity = 0.5, Density = 600, Roughness = 'Smooth')
+
 #######Roofs
 brick_material = idf.newidfobject('MATERIAL', Name = "Wooden_Roof", Thickness = 0.2,Specific_Heat = 1000, Conductivity = 0.5, Density = 600, Roughness = 'Rough'  )
 idf.newidfobject("CONSTRUCTION", Name = "Roof_Structure",Outside_Layer = 'Wooden_Roof', Layer_2 = "ExteriorInsulation")
@@ -105,16 +90,11 @@ print(materials)
 #######Floors
 brick_material = idf.newidfobject('MATERIAL', Name = "Concrete_Floor", Thickness = 0.2,Specific_Heat = 1000, Conductivity = 0.5, Density = 600, Roughness = 'Rough'  )
 idf.newidfobject("CONSTRUCTION", Name = "Floor_Structure",Outside_Layer = 'Concrete_Floor', Layer_2 = "ExteriorInsulation")
+
 # Change surfaces
 #Surface types
 surfaces = idf.idfobjects['BUILDINGSURFACE:DETAILED']
 s_types = [surface.Surface_Type for surface in surfaces]
-print(s_types)
-
-#Surface types
-surfaces = idf.idfobjects['BUILDINGSURFACE:DETAILED']
-s_types = [surface.Surface_Type for surface in surfaces]
-# print(s_types)
 
 #Fenestration surfaces
 fenestration = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
@@ -142,7 +122,7 @@ for window in windows:
 
 
 # fenestration = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
-print(fenestration[0])
+# print(fenestration[0])
 print(fenestration)
 
 # Input Site information
@@ -175,47 +155,59 @@ idf.newidfobject("OUTPUT:VARIABLE", Variable_Name="Zone Ideal Loads Supply Air T
 
 
 
+
 output_dir = r'C:\Users\Nefeli\Desktop\thesis_work\Codes\Thesis_Project\TrialFiles\Output'
 simulations_dir = os.path.join(output_dir, "simulations")
 # Run save configuration
 idf.save(filename=os.path.join(output_dir, "config.idf"), lineendings='default', encoding='latin-1')
 idf.run(output_directory=simulations_dir, expandobjects=True, annual=True)
 
-# Clean objects
-idf.idfobjects.clear()
+
 
 ########################################SIMULATION######################################
 
-#  Helper class to extract total energy use in kWh, via the esopackage
-class ESO:
-    def __init__(self, path):
-        self.dd, self.data = esoreader.read(path)
+# #  Helper class to extract total energy use in kWh, via the esopackage
+# class ESO:
+#     def __init__(self, path):
+#         self.dd, self.data = esoreader.read(path)
 
-    def read_var(self, variable, frequency="Hourly"):
-        return [
-            {"key": k, "series": self.data[self.dd.index[frequency, k, variable]]}
-            for _f, k, _v in self.dd.find_variable(variable)
-        ]
+#     def read_var(self, variable, frequency="Hourly"):
+#         return [
+#             {"key": k, "series": self.data[self.dd.index[frequency, k, variable]]}
+#             for _f, k, _v in self.dd.find_variable(variable)
+#         ]
 
-    def total_kwh(self, variable, frequency="Hourly"):
-        j_per_kwh = 3_600_000
-        results = self.read_var(variable, frequency)
-        return sum(sum(s["series"]) for s in results) / j_per_kwh
+#     def total_kwh(self, variable, frequency="Hourly"):
+#         j_per_kwh = 3_600_000
+#         results = self.read_var(variable, frequency)
+#         return sum(sum(s["series"]) for s in results) / j_per_kwh
 
 
-########################################POST PROCESSING######################################
-results = []
-eso = ESO(os.path.join(simulations_dir, "eplusout.eso"))
-heat = eso.total_kwh("Zone Ideal Loads Supply Air Total Heating Energy")
-cool = eso.total_kwh("Zone Ideal Loads Supply Air Total Cooling Energy")
-results.append([heat, cool, heat + cool])
-# idf.run( )
+#######################################POST PROCESSING######################################
+# results = []
+# eso = ESO(os.path.join(simulations_dir, "eplusout.eso"))
+# heat = eso.total_kwh("Zone Ideal Loads Supply Air Total Heating Energy")
+# cool = eso.total_kwh("Zone Ideal Loads Supply Air Total Cooling Energy")
+# results.append([heat, cool, heat + cool])
+# # idf.run( )
 
-headers = ["Heat", "Cool", "Total"]
-header_format = "{:>10}" * (len(headers))
-row_format = "{:>10.1f}" * (len(headers))
-print(header_format.format(*headers))
-for row in results:
-    print(row_format.format(*row))
+# headers = ["Heat", "Cool", "Total"]
+# header_format = "{:>10}" * (len(headers))
+# row_format = "{:>10.1f}" * (len(headers))
+# print(header_format.format(*headers))
+# for row in results:
+#     print(row_format.format(*row))
+
+from eppy.results import readhtml
+import pprint
+
+fresults = os.path.join(simulations_dir,"eplustbl.htm")
+fhandle = open(fresults, 'r').read()
+htables = readhtml.titletable(fhandle)
+site_energy_t = htables[0][1]
+pp = pprint.PrettyPrinter()
+net_energy_mj = site_energy_t[2][3]
+net_energy_kwh = net_energy_mj*0.28
+print(net_energy_kwh)
 
 
