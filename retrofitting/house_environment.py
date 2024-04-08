@@ -58,23 +58,28 @@ class House(Env):
         TRANSITION_MODEL[1] = np.array([[1, 0, 0],
                                         [1, 0, 0],
                                         [1, 0, 0]])
-
+        # TRANSITION_MODEL[2] = np.array([[1, 0, 0],
+        #                                 [1, 0, 0],
+        #                                 [1, 0, 0]])
+        # TRANSITION_MODEL[3] = np.array([[1, 0, 0],
+        #                                 [1, 0, 0],
+        #                                 [1, 0, 0]])
         # Calculate transition model of system
         STATE_TRANSITION_MODEL = np.zeros((num_actions, len(state_space), len(state_space)))
         action_one_hot_enc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
         for action in range(num_actions):
-            for key in state_space.keys():
+            for state in state_space.keys():
                 row = []
-                for future_key in state_space.keys():
+                for next_state in state_space.keys():
                     future_states_probabilities = []
-                    for i in range(num_damage_states):
-                        action_array = action_one_hot_enc[action][i]
-                        probability = TRANSITION_MODEL[action_array][state_space[key][i]][state_space[future_key][i]]
+                    for damage_level in range(num_damage_states):
+                        action_array = action_one_hot_enc[action][damage_level]
+                        probability = TRANSITION_MODEL[action_array][state_space[state][damage_level]][state_space[next_state][damage_level]]
                         future_states_probabilities.append(probability)
                     new_probability = np.prod(future_states_probabilities)
                     row.append(new_probability)
-                STATE_TRANSITION_MODEL[action][key] = row
+                STATE_TRANSITION_MODEL[action][state] = row
         # Define the file path where you want to save the array
         file_path = 'my_array.npy'
 
