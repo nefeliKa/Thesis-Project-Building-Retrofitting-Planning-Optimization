@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-from house import House
+from retrofitting.house_environment import House
 
 
 def value_iteration(env: House, discount_factor=0.97):
@@ -12,7 +12,7 @@ def value_iteration(env: House, discount_factor=0.97):
     delta_threshold = 1e-20
     delta = 10
 
-    num_iterations = 0
+    num_iterations = 5000
     # Fixed point iteration
     while delta > delta_threshold:
         num_iterations += 1
