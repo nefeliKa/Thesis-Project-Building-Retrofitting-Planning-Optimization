@@ -1,5 +1,5 @@
 from gym import Env
-from house import House
+from retrofitting.house_environment import House
 from value_iteration import value_iteration
 import matplotlib.pyplot as plt
 import numpy as np
