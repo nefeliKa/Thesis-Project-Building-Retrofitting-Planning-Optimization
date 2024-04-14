@@ -65,7 +65,7 @@ for file in os.listdir(output_directory):
         print(f"~~~~~~~~~~~~~~~~~~ Processing {file}")
         matches = re.findall(pattern, file)
         print(matches)
-        current_state = (degradations2states[matches[0]], degradations2states[matches[1]], degradations2states[matches[2]])
+        current_state = (degradations2states[matches[0]], degradations2states[matches[1]], degradations2states[matches[2]],degradations2states[matches[3]])
 
         fresults = os.path.join(output_directory, file)
         fhandle = open(fresults, 'r').read()

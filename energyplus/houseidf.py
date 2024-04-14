@@ -23,7 +23,7 @@ import os
 
 
 ########################################CONFIGURATION######################################
-def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity):
+def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity,window_percentage):
     # Set the idd file and idf file path
     iddfile = 'C:\EnergyPlusV23-2-0\Energy+.idd'
     fname1 = 'C:\EnergyPlusV23-2-0\Toy_files\Minimal_1 - Copy (2).idf'
@@ -40,21 +40,23 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity)
     # idf.idfobjects.clear()
     block = idf.block
     del block
-
+    # idf.view_model()
     # # Geometry
     idf.add_block(
         name='House',
         coordinates=[(0, 0), (5.40,0), (5.40, 8.25), (0, 8.25)],
-        height=9,
+        height=6,
         num_stories=3,
-        below_ground_stories=1,
-        below_ground_storey_height=2.5,
+        # below_ground_stories=1,
+        # below_ground_storey_height=2.5,
         zoning='by_storey')
     idf.intersect_match()
-
+    print(idf.getsurfaces())
+    
     #windows position and wwr
-    idf.set_wwr(wwr=0.35, orientation= 'south', wwr_map={0:0} )
-    idf.set_wwr(wwr=0.35,orientation= 'north', wwr_map={0:0} )
+    idf.set_wwr(wwr=0.40, orientation= 'south', wwr_map={0:0} )
+    idf.set_wwr(wwr=0.40,orientation= 'north', wwr_map={0:0} )
+    idf.set_wwr(wwr=0.40,orientation= 'west', wwr_map={0:0} )
 
     # Show 3D model
     # idf.view_model()
@@ -63,7 +65,9 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity)
     #######Windows
     window_materials =  idf.idfobjects['WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM']
     # print(window_materials)
-    brick_material = idf.newidfobject('WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM', Name = "Glazings", UFactor='2.8', Solar_Heat_Gain_Coefficient = 0.3,Visible_Transmittance = 0.8 )
+    Original_U_factor = 2.8
+    new_ufactor = str((Original_U_factor*window_percentage)+Original_U_factor)
+    window_material = idf.newidfobject('WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM', Name = "Glazings", UFactor=new_ufactor, Solar_Heat_Gain_Coefficient = 0.3,Visible_Transmittance = 0.8 )
     idf.newidfobject("CONSTRUCTION", Name = "Glazing_System",Outside_Layer = 'Glazings')
     # del window_materials[0]
     # print(window_materials)
@@ -73,9 +77,9 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity)
     roof_conductivity = (original_conductivity*r_new_conductivity)+original_conductivity
     wall_conductivity = (original_conductivity*w_new_conductivity)+original_conductivity
     floor_conductivity = (original_conductivity*f_new_conductivity)+ original_conductivity
-    roof_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorRoofInsulation", Thickness = 0.05,Specific_Heat = 1400, Conductivity = roof_conductivity, Density = 25, Roughness = 'Smooth')
-    wall_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorWallInsulation", Thickness = 0.05,Specific_Heat = 1400, Conductivity = wall_conductivity, Density = 25, Roughness = 'Smooth')
-    groundfloor_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorFloorInsulation", Thickness = 0.05,Specific_Heat = 1400, Conductivity = floor_conductivity, Density = 25, Roughness = 'Smooth')
+    roof_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorRoofInsulation", Thickness = 0.2,Specific_Heat = 1400, Conductivity = roof_conductivity, Density = 25, Roughness = 'Smooth')
+    wall_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorWallInsulation", Thickness = 0.2,Specific_Heat = 1400, Conductivity = wall_conductivity, Density = 25, Roughness = 'Smooth')
+    groundfloor_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorFloorInsulation", Thickness = 0.2,Specific_Heat = 1400, Conductivity = floor_conductivity, Density = 25, Roughness = 'Smooth')
     # roof_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorRoofInsulation", Thickness = 0.05,Specific_Heat = 1400, Conductivity = original_conductivity, Density = 25, Roughness = 'Smooth')
     # wall_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorWallInsulation", Thickness = 0.05,Specific_Heat = 1400, Conductivity = original_conductivity, Density = 25, Roughness = 'Smooth')
     # groundfloor_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorFloorInsulation", Thickness = 0.05,Specific_Heat = 1400, Conductivity = original_conductivity, Density = 25, Roughness = 'Smooth')
@@ -114,6 +118,9 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity)
 
     #Fenestration surfaces
     fenestration = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
+    del fenestration[2]
+    del fenestration[-1]
+    
 
     #Surface Boundary Conditions
     s_bcs = [surface.Outside_Boundary_Condition for surface in surfaces]
@@ -178,6 +185,7 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity)
     for zone in idf.idfobjects["ZONE"]:
             idf.newidfobject("HVACTEMPLATE:ZONE:IDEALLOADSAIRSYSTEM",Zone_Name=zone.Name,Template_Thermostat_Name=stat.Name,)
 
+    # print(idf.idfobjects["ZONE"])
 
     idf.newidfobject("OUTPUT:VARIABLE", Variable_Name="Utility Use Per Conditioned Floor Area")
     idf.newidfobject("OUTPUT:VARIABLE", Variable_Name="Zone Ideal Loads Supply Air Total Heating Energy",
@@ -185,12 +193,14 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity)
     idf.newidfobject("OUTPUT:VARIABLE", Variable_Name="Zone Ideal Loads Supply Air Total Cooling Energy",
                     Reporting_Frequency="Hourly")
 
+    idf.view_model()
+
     import os
     from eppy.results import readhtml
 
     output_dir = r'C:\Users\Nefeli\Desktop\thesis_work\Codes\Thesis_Project\TrialFiles\Output'
     simulations_dir = os.path.join(output_dir, "simulations")
-    file_name = f"roof({r_new_conductivity})_wall({w_new_conductivity})_floor({f_new_conductivity})"
+    file_name = f"roof({r_new_conductivity})_wall({w_new_conductivity})_floor({f_new_conductivity})_window({window_percentage})"
     trial_simulations_dir = os.path.join(output_dir, "trial_simulation")
 
     # Run simulation
@@ -202,13 +212,15 @@ degradation_list = [10, 30, 50]
 insulation_r = [i / 100 for i in degradation_list]
 insulation_w = [i / 100 for i in degradation_list]
 insulation_f = [i / 100 for i in degradation_list]
+insulation_window = [i / 100 for i in degradation_list]
 
 file_name_list = []
 for r_deg_percentage in insulation_r: 
     for w_deg_percentage in insulation_w:
         for f_deg_percentage in insulation_f:
-            filepath, result = create_simulation(r_deg_percentage, w_deg_percentage, f_deg_percentage)
-            file_name_list.append(result)
+            for window_percentage in insulation_window:
+                filepath, result = create_simulation(r_deg_percentage, w_deg_percentage, f_deg_percentage, window_percentage)
+                file_name_list.append(result)
             
 # Convert list to string
 list_as_string = ', '.join(map(str, file_name_list))
