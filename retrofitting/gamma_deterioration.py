@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 # this script was blindly ported from Matlab to Python...
 #In this script a custom gamma fucntio is used to describe the deterioration curve
 #
-
+SIMPLE_STUFF = True
 
 def custom_gamma(a, b, t, beta):
     # TODO: understand why the shape, scale are selected like this. Maybe more info on the paper??
@@ -19,7 +19,7 @@ beta = 0.2                                              # beta descibes the curv
 std = 0.15 * mean
 T = 150                                                 # number of years 
 
-numbder_of_curves = 1000                                                # number of realizations
+N = 1000                                                # number of realizations
 
 variance = std * std
 b = variance / mean                                     # scale
@@ -28,14 +28,18 @@ a = (mean * mean / variance) / (np.power(T, beta))      # shape. TODO: Why is it
 # b = 0.2
 
 
-deterioration = np.zeros((numbder_of_curves, T + 1))
-to = np.zeros((1, numbder_of_curves))
+deterioration = np.zeros((N, T + 1))
+to = np.zeros(N)
 
-for i in range(numbder_of_curves):
-    to[0][i] = 1
-    deterioration[i, 0] = 0
+for i in range(N):
+    if SIMPLE_STUFF:
+        to[i] = 1
+        deterioration[i, 0: int(to[i])] = 0
+    else:
+        to[i] = np.random.randint(1, T - 1)
+        deterioration[i, int(to[i])] = np.random.uniform(0, 1)
 
-    for t in range(1, T):
+    for t in range(int(to[i]), T):
         point_from_gamma_dist = custom_gamma(a, b, t, beta)
         deterioration[i, t+1] = deterioration[i, t] + point_from_gamma_dist
         deterioration[i, t+1] = min(.9999999, float(deterioration[i, t+1]))
@@ -50,16 +54,18 @@ bin_size = 10
 n_bins = int(100 / bin_size)
 Dlabel = deterioration.copy()
 
-for k in range(numbder_of_curves):
-    for l in range(int(to[0][k]), T + 1):
-        for j in range(n_bins + 1):
+for k in range(N):
+    for l in range(int(to[k]), T + 1):
+        for j in range(n_bins):
             if (deterioration[k, l] < (j * bin_size / 100)) and (deterioration[k, l] >= (j - 1) * bin_size / 100):
                 Dlabel[k, l] = j
+                if j == 10:
+                    print("bla")
 
 trans_counts = np.zeros((n_bins, n_bins, T))
 
-for i in range(numbder_of_curves):
-    for t in range(int(to[0][i]), T + 1):
+for i in range(N):
+    for t in range(int(to[i]), T + 1):
         trans_counts[int(Dlabel[i, t - 1]), int(Dlabel[i, t]), t - 1] =\
             1 + trans_counts[int(Dlabel[i, t - 1]), int(Dlabel[i, t]), t - 1]
 
@@ -69,7 +75,14 @@ p = trans_counts.copy()
 
 for i in range(n_bins):
     for t in range(1, T+1):
-        p[i, :, t - 1] = trans_counts[i, :, t - 1] / counts[i, 0, t - 1]
+        if counts[i, 0, t - 1] > 0:
+            p[i, :, t - 1] = trans_counts[i, :, t - 1] / counts[i, 0, t - 1]
+        else:
+            p[i, :, t - 1] = 0
+
+if SIMPLE_STUFF:
+    np.save("transition_matrices_simple.npy", p)
+else:
+    np.save("transition_matrices_complex.npy", p)
 
 
-print(counts)
