@@ -22,9 +22,9 @@ class House(Env):
         self.time = 0
         self.num_years = 50
         self.time_step = 5
-
-        self.state_transition_model = House.get_state_transition_model(num_actions=num_actions,
-                                                                       state_space=self.state_space)
+        self.p ,self.change_matrix = self.get_transition_matrices()
+        self.ages = [0,0,0]
+        # self.state_transition_model = House.get_state_transition_model(num_actions=num_actions,state_space=self.state_space)
         self.house_size_m2 = house_size_m2
 
         # [cost_doNothing, cost_roof, cost_wall, cost_cellar]
@@ -34,6 +34,12 @@ class House(Env):
         self.energy_demand_nominal = [57, 95, 38]
         self.degradation_rates = [0.0, 0.2, 0.4]
 
+    def one_hot_enc(self,action):
+        # Get transition probabilities, next state, and reward
+        action_one_hot_enc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        act = action_one_hot_enc[action]  
+        return act
+    
     @staticmethod
     def get_state_space(num_damage_states: int):
         state_space = {}
@@ -46,46 +52,16 @@ class House(Env):
                     state_number += 1
         return state_space
 
-    @staticmethod
-    def get_state_transition_model(num_actions: int, state_space: dict, ):
-        num_damage_states = 3  # good, medium, bad
-
-        # Define transition model of components
-        TRANSITION_MODEL = np.zeros((num_actions, num_damage_states, num_damage_states))
-        TRANSITION_MODEL[0] = np.array([[0.8, 0.2, 0.0],
-                                        [0.0, 0.8, 0.2],
-                                        [0.0, 0.0, 1.0]])
-        TRANSITION_MODEL[1] = np.array([[1, 0, 0],
-                                        [1, 0, 0],
-                                        [1, 0, 0]])
-        # TRANSITION_MODEL[2] = np.array([[1, 0, 0],
-        #                                 [1, 0, 0],
-        #                                 [1, 0, 0]])
-        # TRANSITION_MODEL[3] = np.array([[1, 0, 0],
-        #                                 [1, 0, 0],
-        #                                 [1, 0, 0]])
-        # Calculate transition model of system
-        STATE_TRANSITION_MODEL = np.zeros((num_actions, len(state_space), len(state_space)))
-        action_one_hot_enc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
-
-        for action in range(num_actions):
-            for state in state_space.keys():
-                row = []
-                for next_state in state_space.keys():
-                    future_states_probabilities = []
-                    for damage_level in range(num_damage_states):
-                        action_array = action_one_hot_enc[action][damage_level]
-                        probability = TRANSITION_MODEL[action_array][state_space[state][damage_level]][state_space[next_state][damage_level]]
-                        future_states_probabilities.append(probability)
-                    new_probability = np.prod(future_states_probabilities)
-                    row.append(new_probability)
-                STATE_TRANSITION_MODEL[action][state] = row
-        # Define the file path where you want to save the array
-        file_path = 'my_array.npy'
-
-        # Save the array to the specified file
-        np.save(file_path, STATE_TRANSITION_MODEL)
-        return STATE_TRANSITION_MODEL
+    def get_transition_matrices(self):
+    # Load npy file
+        p = np.load('transition_matrices_n.npy')
+        # Round all components of the array to three decimal places
+        p = np.round(p, 3)
+        # Define the transition matrices for action
+        transition_matrix = np.array([[1, 0, 0],
+                                    [1, 0, 0],
+                                    [1, 0, 0]])
+        return p,transition_matrix
 
     @staticmethod
     def energy2euros(num_of_kwh: float) -> float:
@@ -93,6 +69,8 @@ class House(Env):
         return price_kwh * num_of_kwh
 
     def get_reward(self, action: int, current_state: int) -> float:
+        if action != 0:
+            foo = 666
         action_costs = self.renovation_costs[action]
 
         energy_demand_roof = self.energy_demand_nominal[0] * (1 + self.degradation_rates[self.state_space[current_state][0]])
@@ -107,8 +85,72 @@ class House(Env):
         reward = -net_cost
 
         return reward
+    
+    def calculate_system_probability(self, current_state, component_ages, probability_matrices,state_space,action):
+        overall_probability = []
 
-    def get_transition_probs(self, current_state: int, action: int, time: int):
+        act = self.one_hot_enc(action)
+        
+        # Iterate over all possible next states
+        for next_state in range(len(state_space)):
+
+            transition_probability = 1.0
+            
+            # Iterate over each component
+            for i, age in enumerate(component_ages):
+                # Get the probability matrix for the current component based on its age
+                n = state_space[current_state]
+
+                if act[i] == 0 :
+
+                    probability_matrix = probability_matrices[:,:,i][n[i]]
+                    
+                    # Get the probability of transitioning from the current state to the next state for this component
+                    transition_probability_component = probability_matrix[state_space[next_state][i]]
+                else:
+                    transition_probability_component = self.change_matrix[n[i]][state_space[next_state][i]]
+
+                # Multiply the probabilities for all components
+                transition_probability *= transition_probability_component
+
+                # print(transition_probability)
+            # Add the probability of this next state to the overall probability
+            overall_probability.append(transition_probability)
+
+            sum = 0
+            for i in overall_probability: 
+                sum +=i
+            # print(overall_probability)
+            # print(f'sum is {sum}')
+            # if sum > 1 :
+            #     print('we did wrong again?')
+            # elif sum < 1: 
+            #     print('sum<1')
+
+        return overall_probability
+    
+
+    # def calculate_transition_probability(self,state :int ,next_state :int ,ages :list ,p :np.array, action:int,state_space):
+    #     action_one_hot_enc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    #     list = []
+    #     # Initialize a variable to hold the sum
+    #     total_product = 1
+    #     for index,value in enumerate(state_space[state]): 
+    #         next_value = state_space[next_state][index] 
+    #         if action_one_hot_enc[action][index] == 0:
+    #             component = p[:,:,ages[index]][value][next_value]
+    #         else: 
+    #             component = transition_matrix[value][next_value]
+    #         list.append(component)
+                
+        # for num in list: 
+        #      total_product *= num
+        # # print(total_product)
+
+        # return total_product
+    
+
+    def get_transition_probs(self, current_state: int, action: int):
         """
         Function that calculates probabilities.
         Parameters
@@ -129,19 +171,32 @@ class House(Env):
             The reward from taking the action.
         """
         transition_probabilities = []
+        
+        act = self.one_hot_enc(action)
 
-        # Check if episode should terminate due to time limit
-        if time >= self.num_years:
-            return transition_probabilities, time
+        pr = self.calculate_system_probability(current_state = current_state, component_ages =self.ages, probability_matrices = self.p,state_space=self.state_space, action = action)
 
         for next_state in range(self.num_states):
-            prob = self.state_transition_model[action][current_state][next_state]
+            # prob = self.state_transition_model[action][current_state][next_state]
+            prob = pr[next_state]
+            # prob = self.calculate_transition_probability(state =current_state,next_state =next_state,ages=self.ages,p = p,action = action,state_space=self.state_space)
             reward = self.get_reward(action=action, current_state=current_state)
 
             transition_probabilities.append((prob, next_state, reward))
+        
+        total_sum = 0
 
-        time += self.time_step
-        return transition_probabilities, time
+        # Iterate through the list and add each probability to the sum
+        for prob, _, _ in transition_probabilities:
+            total_sum += prob
+
+        # Round the total_sum to three decimal places
+        total_sum = round(total_sum, 3)
+
+        if total_sum > 1:
+            raise Exception('Probability is bigger than 1. We guessed wrong')
+
+        return transition_probabilities
 
     def reset(self):
         """
@@ -172,18 +227,29 @@ class House(Env):
             Whether the episode is done.
         info : dict
             Additional information (unused).
-        """
-        # Get transition probabilities, next state, and reward
+        """ 
+        act = self.one_hot_enc(action)
 
-        # Update time
-        self.time += self.time_step
+        # Get all transition probabilities for the current state
+        transitions = self.get_transition_probs(self.current_state, action)
+
+        # Extract probabilities from transition probabilities
+        probabilities = [prob for prob, _, _ in transitions]
 
         # Choose next state based on transition probabilities
-        next_state = np.random.choice(self.num_states, p=self.state_transition_model[action][self.current_state])
-
+        next_state = np.random.choice(self.num_states, p=probabilities)
         # Calculate state reward
 
         reward = self.get_reward(action, self.current_state)
+        
+        # Update time
+        self.time += self.time_step
+        
+        for i in range(len(self.ages)):
+            if act[i] == 0:
+                self.ages[i] += self.time_step
+            else: 
+                self.ages[i] = 0
 
         # Check if episode is done (time limit reached)
         done = self.time >= self.num_years
@@ -198,4 +264,3 @@ class House(Env):
     def close(self):
         # Clean up resources, if any
         pass
-
