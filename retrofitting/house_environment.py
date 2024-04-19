@@ -11,7 +11,10 @@ class House(Env):
         super(House, self).__init__()
 
         ###################CLASS ATTRIBUTES######################
-
+        self.current_state = 0
+        self.time = 0
+        self.num_years = 60
+        self.time_step = 5
         self.state_space = House.get_state_space(num_damage_states=3,num_years= self.num_years, time_step= self.time_step) 
         self.num_states = len(self.state_space)
 
@@ -23,19 +26,15 @@ class House(Env):
         # 3   # FIX_FACADE
         self.action_space = spaces.Discrete(num_actions)
         self.observation_space = spaces.Discrete(self.num_states)
-        self.current_state = 0
-        self.time = 0
-        self.num_years = 60
-        self.time_step = 5
         self.p ,self.change_matrix = self.get_transition_matrices(saved_version=True,simple_stuff=True)
-        self.ages = [0,0,0]
         self.house_size_m2 = house_size_m2
         self.kwh_per_state = self.import_simulation_data(file_path='building_scenarios_copy.csv',no_windows=True)
         self.renovation_costs = np.array([0, 2000, 5000, 3000])    # [cost_doNothing, cost_roof, cost_wall, cost_cellar] # TODO: should change according to m2
         self.energy_demand_nominal = [57, 95, 38]  # [roof, wall, cellar]
         self.degradation_rates = [0.0, 0.2, 0.4]
-
-
+        self.probability_matrices,self.action_matrices = self.get_transition_matrices(saved_version = True, simple_stuff= True)
+        self.probability_matrices = self.state_space_probability(self.probability_matrices,self.state_space, save_version =True, import_version=False)
+        self.ages = [0,0,0]
         ###################FUNCTIONS######################
 
     def one_hot_enc(self,action):
@@ -63,10 +62,10 @@ class House(Env):
         for r_damage_state in range(num_damage_states):
             for w_damage_state in range(num_damage_states):
                 for c_damage_state in range(num_damage_states):
-                    for age_r in range(0,num_years,time_step):
-                        for age_w in range(0,num_years,time_step):
-                            for age_w in range(0,num_years,time_step):
-                                state_space[state_number] = (r_damage_state, w_damage_state, c_damage_state)
+                    for age_r in range(0,num_years+1,time_step):
+                        for age_w in range(0,num_years+1,time_step):
+                            for age_f in range(0,num_years+1,time_step):
+                                state_space[state_number] = (r_damage_state, w_damage_state, c_damage_state,age_r,age_w,age_f)
                                 state_number += 1
         return state_space
 
@@ -91,38 +90,48 @@ class House(Env):
     def get_reward(self, action: int, current_state: int) -> float:
         action_costs = self.renovation_costs[action]
         total_energy_demand = self.kwh_per_state[current_state]
-        # energy_demand_roof = self.energy_demand_nominal[0] * (1 + self.degradation_rates[self.state_space[current_state][0]])
-        # energy_demand_wall = self.energy_demand_nominal[1] * (1 + self.degradation_rates[self.state_space[current_state][1]])
-        # energy_demand_cellar = self.energy_demand_nominal[2] * (1 + self.degradation_rates[self.state_space[current_state][2]])
-        # total_energy_demand = energy_demand_roof + energy_demand_wall + energy_demand_cellar
         energy_bills = House.energy2euros(total_energy_demand)
         energy_bills = energy_bills * self.house_size_m2
         net_cost = action_costs + energy_bills
         reward = -net_cost
         return reward
     
-    def calculate_system_probability(self, current_state, component_ages, probability_matrices,state_space,action):
-        overall_probability = []
-        act = self.one_hot_enc(action)
-        # Iterate over all possible next states
-        for next_state in range(len(state_space)):
-            transition_probability = 1.0
-            # Iterate over each component
-            for i, age in enumerate(component_ages):
-                # Get the probability matrix for the current component based on its age
-                n = state_space[current_state]
-                if act[i] == 0 :
-                    probability_matrix = probability_matrices[:,:,i][n[i]]
-                    # Get the probability of transitioning from the current state to the next state for this component
-                    transition_probability_component = probability_matrix[state_space[next_state][i]]
-                else:
-                    transition_probability_component = self.change_matrix[n[i]][state_space[next_state][i]]
-                # Multiply the probabilities for all components
-                transition_probability *= transition_probability_component
-            overall_probability.append(transition_probability)
-        return overall_probability
-    
-
+    def state_space_probability(self, probability_matrices,state_space, save_version:bool, import_version:bool):
+        if import_version :
+            overall_probability = np.load("age_matrices.npy")
+        else:
+            # overall_probability = np.zeros((len(state_space),len(state_space)))
+            overall_probability = []
+            # Iterate over all possible next states
+            for current_state in range(len(state_space)):
+                list2 = []
+                st1 = state_space[current_state][0]
+                age1 = state_space[current_state][3]
+                st2 = state_space[current_state][1]
+                age2 = state_space[current_state][4]
+                st3 = state_space[current_state][2]
+                age3 = state_space[current_state][5]
+                for next_state in range(len(state_space)):
+                    st4 = state_space[next_state][0]
+                    age4 = state_space[next_state][3]
+                    st5 = state_space[next_state][1]
+                    age5 = state_space[next_state][4]
+                    st6 = state_space[next_state][2] # TODO check to change the ages to the futures ages
+                    age6 = state_space[next_state][5]
+                    prob1 = probability_matrices[age4][st1][st4]
+                    prob2 = probability_matrices[age5][st2][st5]
+                    prob3 = probability_matrices[age6][st3][st6]
+                    lst = [prob1,prob2,prob3]
+                    lst = np.array(lst)
+                    lst = np.prod(lst)  
+                    list2.append(int(lst))
+                list2 = np.array(list2)      
+                overall_probability.append(list2)
+            overall_probability = np.array(overall_probability)
+            if save_version :
+                np.save("age_matrices.npy", overall_probability)    
+            return overall_probability
+            
     def get_transition_probs(self, current_state: int, action: int):
         """
         Function that calculates probabilities.
@@ -144,7 +153,7 @@ class House(Env):
             The reward from taking the action.
         """
         transition_probabilities = []
-        pr = self.calculate_system_probability(current_state = current_state, component_ages =self.ages, probability_matrices = self.p,state_space=self.state_space, action = action)
+        pr = self.calculate_system_probability(current_state = current_state, probability_matrices = self.p,state_space=self.state_space, action = action)
         for next_state in range(self.num_states):
             # prob = self.state_transition_model[action][current_state][next_state]
             prob = pr[next_state]
