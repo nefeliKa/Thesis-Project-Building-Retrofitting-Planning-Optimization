@@ -96,41 +96,30 @@ class House(Env):
         reward = -net_cost
         return reward
     
-    def state_space_probability(self, probability_matrices,state_space, save_version:bool, import_version:bool):
-        if import_version :
-            overall_probability = np.load("age_matrices.npy")
-        else:
-            # overall_probability = np.zeros((len(state_space),len(state_space)))
-            overall_probability = []
-            # Iterate over all possible next states
-            for current_state in range(len(state_space)):
-                list2 = []
-                st1 = state_space[current_state][0]
-                age1 = state_space[current_state][3]
-                st2 = state_space[current_state][1]
-                age2 = state_space[current_state][4]
-                st3 = state_space[current_state][2]
-                age3 = state_space[current_state][5]
-                for next_state in range(len(state_space)):
-                    st4 = state_space[next_state][0]
-                    age4 = state_space[next_state][3]
-                    st5 = state_space[next_state][1]
-                    age5 = state_space[next_state][4]
-                    st6 = state_space[next_state][2] # TODO check to change the ages to the futures ages
-                    age6 = state_space[next_state][5]
-                    prob1 = probability_matrices[age4][st1][st4]
-                    prob2 = probability_matrices[age5][st2][st5]
-                    prob3 = probability_matrices[age6][st3][st6]
-                    lst = [prob1,prob2,prob3]
-                    lst = np.array(lst)
-                    lst = np.prod(lst)  
-                    list2.append(int(lst))
-                list2 = np.array(list2)      
-                overall_probability.append(list2)
-            overall_probability = np.array(overall_probability)
-            if save_version :
-                np.save("age_matrices.npy", overall_probability)    
-            return overall_probability
+    def state_space_probability(self, probability_matrices, state_space, save_version=False, import_version=False):
+        if import_version:
+            return np.load("age_matrices.npy")
+
+        num_states = len(state_space)
+        overall_probability = np.zeros((num_states, num_states), dtype=np.float32)
+
+        # Create arrays for future state ages and material states
+        future_state_ages = np.array([[state_space[i][3], state_space[i][4], state_space[i][5]] for i in range(num_states)])
+        future_state_materials = np.array([[state_space[i][0], state_space[i][1], state_space[i][2]] for i in range(num_states)])
+
+        # Compute probabilities using vectorized operations
+        for i in range(num_states):
+            prob1 = probability_matrices[future_state_ages[:, 0], state_space[i][0], future_state_materials[:, 0]]
+            prob2 = probability_matrices[future_state_ages[:, 1], state_space[i][1], future_state_materials[:, 1]]
+            prob3 = probability_matrices[future_state_ages[:, 2], state_space[i][2], future_state_materials[:, 2]]
+            overall_probability[i] = prob1 * prob2 * prob3
+
+        if save_version:
+            np.save("age_matrices.npy", overall_probability)
+        
+        return overall_probability
+
+
             
     def get_transition_probs(self, current_state: int, action: int):
         """
