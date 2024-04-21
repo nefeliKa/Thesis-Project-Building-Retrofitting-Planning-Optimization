@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-from retrofitting.house_environment import House
+from house_environment import House
 
 
 def value_iteration(env: House, discount_factor=0.97):
@@ -25,7 +25,7 @@ def value_iteration(env: House, discount_factor=0.97):
             # store Q values of all actions
             for action in range(4):
                 q_val = 0
-                transition_probs, _ = env.get_transition_probs(current_state=idx_state, action=action, time=0)
+                transition_probs = env.get_transition_probs(current_state=idx_state, action=action)
                 for current_tuple in transition_probs:
                     prob, next_state, reward = current_tuple
                     q_val += prob * (reward + discount_factor * value_function[next_state])
