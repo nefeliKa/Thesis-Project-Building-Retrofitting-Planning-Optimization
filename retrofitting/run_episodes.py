@@ -36,7 +36,7 @@ def run_episodes(env: House, policy: list = None, num_episodes: int = 100):
             else:
                 action = policy[state]
             next_state, reward, done, _ = env.step(action)
-            print(f"\tTime step: {time_idx} --> Current State: {state} | Action: {action} | Next State: {next_state} | Reward: {reward:.2f}")
+            print(f"\tTime step: {time_idx} --> Current State: {state}: {env.state_space[state]} | Action: {action} | Next State: {next_state} | Reward: {reward:.2f}")
             total_cost += abs(reward)
             rewards_current_episode[time_idx] = (abs(np.round(reward)))
             states_current_episode[time_idx] = state
