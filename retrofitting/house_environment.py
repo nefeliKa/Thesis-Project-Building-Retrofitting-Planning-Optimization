@@ -13,28 +13,18 @@ class House(Env):
         ###################CLASS ATTRIBUTES######################
         self.current_state = 0
         self.time = 0
-        self.num_years = 60
-        self.time_step = 5
-        self.state_space = House.get_state_space(num_damage_states=3,num_years= self.num_years, time_step= self.time_step) 
+        self.num_years = 4
+        self.time_step = 1
+        self.state_space = self.get_state_space(num_damage_states=3,num_years= self.num_years, time_step= self.time_step) 
         self.num_states = len(self.state_space)
-
-        num_actions = 4
-        ##### ACTIONS #####
-        # 0,  # DO_NOTHING
-        # 1,  # FIX_ROOF
-        # 2,  # FIX_WALL
-        # 3   # FIX_FACADE
-        self.action_space = spaces.Discrete(num_actions)
+        self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Discrete(self.num_states)
-        self.p ,self.change_matrix = self.get_transition_matrices(saved_version=True,simple_stuff=True)
         self.house_size_m2 = house_size_m2
-        self.kwh_per_state = self.import_simulation_data(file_path='building_scenarios_copy.csv',no_windows=True)
-        self.renovation_costs = np.array([0, 2000, 5000, 3000])    # [cost_doNothing, cost_roof, cost_wall, cost_cellar] # TODO: should change according to m2
+        _, self.kwh_per_state = self.import_simulation_data(file_path='building_scenarios_copy.csv',no_windows=True)
+        self.renovation_costs = np.array([0, 11140, 2000, 1621])    # [cost_doNothing, cost_roof, cost_wall, cost_cellar] # TODO: should change according to m2
         self.energy_demand_nominal = [57, 95, 38]  # [roof, wall, cellar]
-        self.degradation_rates = [0.0, 0.2, 0.4]
-        self.probability_matrices,self.action_matrices = self.get_transition_matrices(saved_version = True, simple_stuff= True)
-        self.probability_matrices = self.state_space_probability(self.probability_matrices,self.state_space, save_version =True, import_version=False)
-        self.ages = [0,0,0]
+        self.degradation_rates = [0.1, 0.2, 0.5]
+        self.states_probs = self.state_space_probability(state_space = self.state_space,save_version = True , calculate_gamma_distribution_probabilities= False, import_saved_probabilities = False, step_size=self.time_step)
         ###################FUNCTIONS######################
 
     def one_hot_enc(self,action):
@@ -46,14 +36,24 @@ class House(Env):
     def import_simulation_data(self,file_path, no_windows: bool):
         data = pd.read_csv(file_path) 
         list = []
+        list2 = [] 
+        dict = {}
         if no_windows:
             val = 3
         else: 
             val = 1
         for indx in range(0,len(data),val):
             kwh_per_m2 = data['energy[kWh/m2]'][indx]
-            list.append(kwh_per_m2)  
-        return list
+            string = data['state'][indx]
+            # Remove the parentheses and split the string by commas
+            split_string = string.strip("()").split(", ")
+            # Extract the first three numbers as integers
+            state = tuple(int(num_str) - 1 for num_str in split_string[:3])
+            dict[state] = kwh_per_m2  
+            list.append(kwh_per_m2)
+            list2.append(state)  
+        list3 = [list,list2]
+        return list3,dict
 
     @staticmethod
     def get_state_space(num_damage_states: int, num_years: int, time_step: int):
@@ -62,25 +62,12 @@ class House(Env):
         for r_damage_state in range(num_damage_states):
             for w_damage_state in range(num_damage_states):
                 for c_damage_state in range(num_damage_states):
-                    for age_r in range(0,num_years+1,time_step):
-                        for age_w in range(0,num_years+1,time_step):
-                            for age_f in range(0,num_years+1,time_step):
+                    for age_r in range(0,num_years,time_step):
+                        for age_w in range(0,num_years,time_step):
+                            for age_f in range(0,num_years,time_step):
                                 state_space[state_number] = (r_damage_state, w_damage_state, c_damage_state,age_r,age_w,age_f)
                                 state_number += 1
         return state_space
-
-    def get_transition_matrices(self, saved_version: bool, simple_stuff: bool):
-        if saved_version:
-            p = np.load('transition_matrices_trial.npy')
-        else: 
-            p = matrices_gen(SIMPLE_STUFF = simple_stuff,N= 1000 ,T = self.num_years, n = self.time_step)
-        # Round all components of the array to three decimal places
-        p = np.round(p, 3)
-        # Define the transition matrices for action
-        transition_matrix = np.array([[1, 0, 0],
-                                    [1, 0, 0],
-                                    [1, 0, 0]])
-        return p,transition_matrix
 
     @staticmethod
     def energy2euros(num_of_kwh: float) -> float:
@@ -89,146 +76,162 @@ class House(Env):
 
     def get_reward(self, action: int, current_state: int) -> float:
         action_costs = self.renovation_costs[action]
-        total_energy_demand = self.kwh_per_state[current_state]
+        state_name = self.state_space[current_state][0:3]
+        total_energy_demand = self.kwh_per_state[state_name]
         energy_bills = House.energy2euros(total_energy_demand)
         energy_bills = energy_bills * self.house_size_m2
         net_cost = action_costs + energy_bills
         reward = -net_cost
         return reward
     
-    def state_space_probability(self, probability_matrices, state_space, save_version=False, import_version=False):
-        if import_version:
-            return np.load("age_matrices.npy")
+    def state_space_probability(self,state_space: dict,save_version:bool , calculate_gamma_distribution_probabilities:bool, import_saved_probabilities: bool, step_size:int):
+        if import_saved_probabilities :
+            array_of_arrays = np.load('array_of_arrays.npy')
+        else:
+        
+            if calculate_gamma_distribution_probabilities == False:
+                load = np.load("transition_matrices_trial.npy")
+            else : 
+                load = matrices_gen(SIMPLE_STUFF = True, N = 1000000, T = self.num_years, do_plot = False)
+            
+            probability_matrices = load 
+            action_matrices =np.array([[1., 0., 0.], [1., 0., 0.],[1., 0., 0.]])
 
-        num_states = len(state_space)
-        overall_probability = np.zeros((num_states, num_states), dtype=np.float32)
 
-        # Create arrays for future state ages and material states
-        future_state_ages = np.array([[state_space[i][3], state_space[i][4], state_space[i][5]] for i in range(num_states)])
-        future_state_materials = np.array([[state_space[i][0], state_space[i][1], state_space[i][2]] for i in range(num_states)])
+            num_states = len(state_space)
+            probability_array = np.zeros((4, num_states, num_states), dtype=np.float32)
 
-        # Compute probabilities using vectorized operations
-        for i in range(num_states):
-            prob1 = probability_matrices[future_state_ages[:, 0], state_space[i][0], future_state_materials[:, 0]]
-            prob2 = probability_matrices[future_state_ages[:, 1], state_space[i][1], future_state_materials[:, 1]]
-            prob3 = probability_matrices[future_state_ages[:, 2], state_space[i][2], future_state_materials[:, 2]]
-            overall_probability[i] = prob1 * prob2 * prob3
+
+            # Compute probabilities using vectorized operations
+            for action in range(self.action_space.n):
+                overall_probability = probability_array[action]
+                act = self.one_hot_enc(action)
+                for i in range(num_states):
+                    for future in range(num_states):
+                        if act[0] == 0:
+                            if state_space[future][3] == (state_space[i][3]+ step_size) :
+                                prob1 = probability_matrices[state_space[i][3], state_space[i][0], state_space[future][0]] 
+                            else: 
+                                prob1 = 0
+                        else: 
+                            if state_space[future][3] == (state_space[i][3]+ step_size) :
+                                prob1 = action_matrices[state_space[i][0],state_space[future][0]]
+                            else:
+                                prob1 = 0
+
+                        if act[1] == 0:
+                            if state_space[future][4] == (state_space[i][4]+ step_size) :
+                                prob2 = probability_matrices[state_space[i][4],state_space[i][1],state_space[future][1]] 
+                            else :
+                                prob2 = 0
+                        else: 
+                            if state_space[future][4] == (state_space[i][4]+ step_size) :
+                                prob2 = action_matrices[state_space[i][1],state_space[future][1]]
+                            else:
+                                prob2 = 0
+
+                        if act[2] == 0: 
+                            if state_space[future][5] == (state_space[i][5]+ step_size):
+                                prob3 = probability_matrices[state_space[i][5],state_space[i][2],state_space[future][2]] 
+                            else:
+                                prob3 = 0
+                        else:
+                            if state_space[future][5] == (state_space[i][5]+ step_size):
+                                prob3 = action_matrices[state_space[i][2],state_space[future][2]] 
+                            else: 
+                                prob3 = 0   
+                        
+                        overall_probability[i,future] = prob1 * prob2 * prob3
+                print(action)
+                # array.append(overall_probability)
+                
+
+
+            bla = probability_array[0]
+
+            def normalize_probabilities(arrays):
+                normalized_arrays = []
+                for array in arrays:
+                    row_sums = [sum(row) for row in array]
+                    normalized_array = []
+                    for i, row in enumerate(array):
+                        if row_sums[i] != 0:
+                            normalized_row = [value / row_sums[i] for value in row]
+                        else:
+                            normalized_row = [0] * len(row)  # Handle division by zero
+                        normalized_array.append(normalized_row)
+                    normalized_arrays.append(normalized_array)
+                return normalized_arrays
+
+        # Assuming arr is your array of arrays
+        row_sums_lists = []
+
+        # Compute the sums of each row for each array
+        for array in range(len(probability_array)):
+            array_row_sums = []
+            for row in probability_array[array]:
+                row_sum = np.sum(row)
+                array_row_sums.append(row_sum)
+            row_sums_lists.append(array_row_sums)
+
+
+        # Normalize arrays
+        normalized_arrays = normalize_probabilities(probability_array)
+
+        # Assuming arr is your array of arrays
+        row_sums_lists2 = []
+
+        # Compute the sums of each row for each array
+        for array in normalized_arrays:
+            array_row_sums = []
+            for row in array:
+                row_sum = np.sum(row)
+                array_row_sums.append(row_sum)
+            row_sums_lists2.append(array_row_sums)
+
+        #conbine the four arrays into one array of arrays
+        array_of_arrays = np.array(normalized_arrays)
 
         if save_version:
-            np.save("age_matrices.npy", overall_probability)
-        
-        return overall_probability
+            np.save("array_of_arrays.npy", array_of_arrays)
+    
+        return array_of_arrays
 
 
-            
     def get_transition_probs(self, current_state: int, action: int):
-        """
-        Function that calculates probabilities.
-        Parameters
-        ----------
-        current_state : int
-            The current state index.
-        action : int
-            The action index.
-        time : int
-            The current time in the episode.
-        Returns
-        -------
-        transition_probs : array
-            The transition probabilities for next states.
-        next_state : int
-            The next state index.
-        reward : float
-            The reward from taking the action.
-        """
         transition_probabilities = []
-        pr = self.calculate_system_probability(current_state = current_state, probability_matrices = self.p,state_space=self.state_space, action = action)
         for next_state in range(self.num_states):
-            # prob = self.state_transition_model[action][current_state][next_state]
-            prob = pr[next_state]
-            # prob = self.calculate_transition_probability(state =current_state,next_state =next_state,ages=self.ages,p = p,action = action,state_space=self.state_space)
+            prob = self.states_probs[action][current_state][next_state]
             reward = self.get_reward(action=action, current_state=current_state)
             transition_probabilities.append((prob, next_state, reward))
-        total_sum = sum(prob for prob, _, _ in transition_probabilities)
-
-        def normalize_array(arr):
-            # Step 1: Calculate the sum of all values in the array
-            total_sum = sum(arr)
-            
-            # Step 2 & 3: Normalize each value in the array
-            normalized_arr = [value / total_sum for value in arr]
-            
-            return normalized_arr
-
-        array = np.array(transition_probabilities)
-        # Normalize the array
-        for i in array:
-            normalized_arr = normalize_array(array)
-
-        print("Original array:", array)
-        print("Normalized array:", normalized_arr)
-        print("Sum of normalized array:", sum(normalized_arr))  # Should be approximately 1
-
-
-        #Check again
-        total_sum = 0
-        # Iterate through the list and add each probability to the sum
-        for prob, _, _ in transition_probabilities:
-            total_sum += prob
-        if total_sum != 1:
-            raise Exception('Probability is bigger than 1. We guessed wrong')
         return transition_probabilities
 
-    def reset(self, seed = random):
-        """
-        Resets the environment to its initial state.
-        Returns
-        -------
-        state : int
-            The initial state index.
-        """
-        self.time = 0
 
+    def reset(self, seed = random):
+        self.time = 0
         self.current_state = 0
         #reset should have observation
         return 0  # Return initial state index
+    
 
     def step(self, action):
-        """
-        Take a step in the environment.
-        Parameters
-        ----------
-        action : int
-            The action index.
-        Returns
-        -------
-        state : int
-            The next state index.
-        reward : float
-            The reward from taking the action.
-        done : bool
-            Whether the episode is done.
-        info : dict
-            Additional information (unused).
-        """ 
-        act = self.one_hot_enc(action)
         # Get all transition probabilities for the current state
-        transitions = self.get_transition_probs(self.current_state, action)
-        # Extract probabilities from transition probabilities
-        probabilities = [prob for prob, _, _ in transitions]
-        # Choose next state based on transition probabilities
-        next_state = np.random.choice(self.num_states, p=probabilities)
+        transitions = self.states_probs[action][self.current_state]
+        if np.sum(transitions) == 0: 
+            done = True
+            next_state = self.num_states - 1
+            self.time += self.time_step
+        else: 
+            # Extract probabilities from transition probabilities
+            # probabilities = [prob for prob in transitions]
+            # Choose next state based on transition probabilities
+            next_state = np.random.choice(self.num_states, p=transitions)
+            self.time += self.time_step
+            # Check if episode is done (time limit reached)
+            done = self.time >= self.num_years or self.current_state == self.num_states
         # Calculate state reward
         reward = self.get_reward(action, self.current_state)   
         # Update time
-        self.time += self.time_step
-        for i in range(len(self.ages)):
-            if act[i] == 0:
-                self.ages[i] += self.time_step
-            else: 
-                self.ages[i] = 0
-        # Check if episode is done (time limit reached)
-        done = self.time >= self.num_years
         self.current_state = next_state
         return next_state, reward, done, {}
 
@@ -240,3 +243,11 @@ class House(Env):
         # Clean up resources, if any
         pass
 
+
+
+
+# if __name__=="__main__":
+#     env = House()
+#     try1 = env.states_probs 
+#     print('bla')
+   
