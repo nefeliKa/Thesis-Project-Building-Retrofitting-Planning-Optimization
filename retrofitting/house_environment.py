@@ -13,8 +13,8 @@ class House(Env):
         ###################CLASS ATTRIBUTES######################
         self.current_state = 0
         self.time = 0
-        self.num_years = 4
-        self.time_step = 1
+        self.num_years = 60
+        self.time_step = 10
         self.state_space = self.get_state_space(num_damage_states=3,num_years= self.num_years, time_step= self.time_step) 
         self.num_states = len(self.state_space)
         self.action_space = spaces.Discrete(4)
@@ -78,9 +78,15 @@ class House(Env):
         action_costs = self.renovation_costs[action]
         state_name = self.state_space[current_state][0:3]
         total_energy_demand = self.kwh_per_state[state_name]
+        if total_energy_demand > 210:
+            total_energy_demand = total_energy_demand * 2
         energy_bills = House.energy2euros(total_energy_demand)
         energy_bills = energy_bills * self.house_size_m2
-        net_cost = action_costs + energy_bills
+        
+        if current_state == 0 :
+            net_cost = action_costs + energy_bills
+        else :
+            net_cost = action_costs + (energy_bills*self.time_step)
         reward = -net_cost
         return reward
     
