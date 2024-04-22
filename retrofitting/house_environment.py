@@ -14,7 +14,7 @@ class House(Env):
         self.current_state = 0
         self.time = 0
         self.num_years = 60
-        self.time_step = 10
+        self.time_step = 5
         self.state_space = self.get_state_space(num_damage_states=3,num_years= self.num_years, time_step= self.time_step) 
         self.num_states = len(self.state_space)
         self.action_space = spaces.Discrete(4)
