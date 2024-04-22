@@ -3,7 +3,7 @@ import gymnasium as gym
 from gymnasium import Env, spaces
 import numpy as np
 import pandas as pd
-from gamma_deterioration_copy_copy import matrices_gen 
+from gamma_deterioration import matrices_gen 
 import random
 
 class House(Env):
@@ -13,8 +13,8 @@ class House(Env):
         ###################CLASS ATTRIBUTES######################
         self.current_state = 0
         self.time = 0
-        self.num_years = 60
-        self.time_step = 5
+        self.num_years = 4
+        self.time_step = 1
         self.state_space = self.get_state_space(num_damage_states=3,num_years= self.num_years, time_step= self.time_step) 
         self.num_states = len(self.state_space)
         self.action_space = spaces.Discrete(4)
