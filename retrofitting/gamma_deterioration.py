@@ -3,102 +3,110 @@ import matplotlib.pyplot as plt
 
 # this script was blindly ported from Matlab to Python...
 #In this script a custom gamma fucntio is used to describe the deterioration curve
-#
-SIMPLE_STUFF = False
 
-def custom_gamma(a, b, t, beta):
-    # TODO: understand why the shape, scale are selected like this. Maybe more info on the paper??
-    x = np.random.gamma(shape=a * t**beta - a * (t - 1)**beta, scale = b)
-    return x
-
-
-mean = 0.35                                              # the mean descibes the fianl degradation that the material 
-                                                        # will have at the end of the time period  T
-beta = 0.2                                              # beta descibes the curvature and direction of the curve. 
-                                                        #For a more steep curve beta shoudl be lower than 1.                                                                   
-std = 0.15 * mean
-T = 60                                                 # number of years 
-
-N = 1000                                                # number of realizations
-
-variance = std * std
-b = variance / mean                                     # scale
-a = (mean * mean / variance) / (np.power(T, beta))      # shape. TODO: Why is it scaled by T^b ???
-# a = 10
-# b = 0.2
+def matrices_gen(SIMPLE_STUFF:bool, N:int, T:int, do_plot:bool): 
+    # SIMPLE_STUFF = True
+    # do_plot = False
+    def custom_gamma(a, b, t, beta):
+        # TODO: understand why the shape, scale are selected like this. Maybe more info on the paper??
+        x = np.random.gamma(shape=a * t**beta - a * (t - 1)**beta, scale = b)
+        return x
 
 
-deterioration = np.zeros((N, T + 1))
-to = np.zeros(N)
+    mean = 0.35                                             # the mean descibes the fianl degradation that the material 
+                                                            # will have at the end of the time period  T
+    beta = 0.2                                              # beta descibes the curvature and direction of the curve. 
+                                                            #For a more steep curve beta shoudl be lower than 1.                                                                   
+    std = 0.15 * mean
+    # T = 60                                                  # number of years 
+    # N = 1000                                                # number of realizations
+    variance = std * std
+    b = variance / mean                                     # scale
+    a = (mean * mean / variance) / (np.power(T, beta))      # shape. TODO: Why is it scaled by T^b ???
+    # a = 10
+    # b = 0.2
 
-for i in range(N):
-    if SIMPLE_STUFF: #choose if you want the complex matrix or not
-        to[i] = 1
-        deterioration[i, 0: int(to[i])] = 0
-    else:
-        to[i] = np.random.randint(1, T - 1)
-        deterioration[i, int(to[i])] = np.random.uniform(0, 1)
+    deterioration = np.zeros((N, T + 1))
+    to = np.zeros(N) # time observed. For simple_stuff, the time is 1
 
-    for t in range(int(to[i]), T):
-        point_from_gamma_dist = custom_gamma(a, b, t, beta)
-        deterioration[i, t+1] = deterioration[i, t] + point_from_gamma_dist
-        deterioration[i, t+1] = min(.9999999, float(deterioration[i, t+1]))
-
-    plt.plot(deterioration[i, :])   # make an array of 1000 arrays. Each array contains the values of the line for the time t
-
-D_mean = np.mean(deterioration, axis=0)
-plt.plot(D_mean, linewidth=4, color="red")
-plt.show()
-
-
-#Here, bin_size is defined, representing the size of each bin for categorizing deterioration values.
-# n_bins is calculated based on the total range of deterioration values (100) divided by the bin_size. 
-#Dlabel is initialized as a copy of the deterioration array, and categories are specified as thresholds for categorization.
-bin_size = 10
-n_bins = int(100 / bin_size)
-Dlabel = deterioration.copy()
-categories = [10, 20, 100]
-
-
-
-#This nested loop iterates over each realization (k) and each time step (l) within the specified time period. 
-#Within each time step, it categorizes the deterioration value into one of the bins (j) based on the specified bin size. 
-#If the deterioration value falls within a specific range determined by the bin size, it assigns the corresponding bin number to Dlabel[k, l].
-for k in range(N): 
-    for l in range(int(to[k]), T + 1,):
-            for j in range(n_bins):
-                if (deterioration[k, l] < (j * bin_size / 100)) and (deterioration[k, l] >= (j - 1) * bin_size / 100):
-                    Dlabel[k, l] = j
-                    if j == 10:
-                        print("bla")
-
-
-#This loop calculates transition counts between deterioration categories over time. 
-#It increments the count in the trans_counts array based on the transitions observed in each realization (i) and each time step (t).
-trans_counts = np.zeros((n_bins, n_bins, T))
-
-for i in range(N):
-    for t in range(int(to[i]), T + 1,):
-        trans_counts[int(Dlabel[i, t - 1]), int(Dlabel[i, t]), t - 1] =\
-            1 + trans_counts[int(Dlabel[i, t - 1]), int(Dlabel[i, t]), t - 1]
-
-
-# This block calculates transition probabilities based on the transition counts. 
-#It divides each count by the total count for each initial state (i) to obtain transition probabilities (p).
-counts = np.sum(trans_counts, axis=1, keepdims=True)
-
-p = trans_counts.copy()
-
-for i in range(n_bins):
-    for t in range(1, T+1,):
-        if counts[i, 0, t - 1] > 0:
-            p[i, :, t - 1] = trans_counts[i, :, t - 1] / counts[i, 0, t - 1]
+    for iteration in range(N):
+        if SIMPLE_STUFF:                                    #choose if you want the complex matrix or not
+            to[iteration] = 1                               #when the matrix is simple, the beginning time is at time 1
+            deterioration[iteration, 0: int(to[iteration])] = 0   
         else:
-            p[i, :, t - 1] = 0
+            to[iteration] = np.random.randint(1, T-1)
+            deterioration[iteration, int(to[iteration])] = np.random.uniform(0, 1)  #TODO make sure the curve here follows the gamma distribution
 
-if SIMPLE_STUFF:
-    np.save("transition_matrices_simple.npy", p)
-else:
-    np.save("transition_matrices_complex.npy", p)
+        for time in range(int(to[iteration]), T):
+            point_from_gamma_dist = custom_gamma(a, b, time, beta) #take a point that follows the gamma distribution curve
+            deterioration[iteration, time +1] = deterioration[iteration, time] + point_from_gamma_dist
+            deterioration[iteration, time] = min(.9999999, float(deterioration[iteration, time + 1]))
+
+        plt.plot(deterioration[iteration, :])   # make an array of 1000 arrays. Each array contains the values of the line for the time t
+
+    if do_plot:
+        D_mean = np.mean(deterioration, axis=0)
+        plt.plot(D_mean, linewidth=4, color="red")
+        plt.show()
+
+    # Define custom categories
+    categories = [10, 20, 100]
+    # Categorize deterioration values into custom categories
+    Dlabel = deterioration.copy()
+    for k in range(N):
+        for l in range(int(to[k]), T + 1):
+            for j, threshold in enumerate(categories):
+                if deterioration[k, l] <= threshold / 100:
+                    Dlabel[k, l] = j
+                    break
+
+
+    # Calculate transition counts between categories over time
+    #Find the number of values in a category in time t 
+    #Find the number of values in all the categories in the   
+
+    list1 = []
+    for t in range(T+1):
+        matrix = np.zeros((3,3))
+        list1.append(matrix)
+    for n in range(N): 
+        for t in range(T+1): 
+            if t<= T-1:
+                current = int(Dlabel[n,t])
+                future = int(Dlabel[n,t + 1])
+                list1[t][current][future]+=1
+
+    array = np.array(list1)
+
+    for t in range(T+1):
+        for i in range(3):  # Assuming your matrix size is (3, 3)
+            s = int(np.sum(array[t][i]))  # Calculate the sum of the row
+            if s==0:
+                if i ==0:
+                    array[t][i] = np.array([0. , 1. , 0.])
+                else: 
+                    array[t][i] = np.array([0. , 0. , 1.])
+                s = int(np.sum(array[t][i]))
+            array[t][i] = np.divide(array[t][i],s)  # Divide values by the sum 
+
+    # checker = []
+    # for t in range(T+1):
+    #     for i in range(3):  # Assuming your matrix size is (3, 3)
+    #         s = int(np.sum(array[t][i]))  # Calculate the sum of the row
+    #         if s!= 1: 
+    #             checker.append[t]
+
+    # print(checker)
+    # print('bl')
+    # #Save the new transition probabilities array
+    np.save("transition_matrices_trial.npy", array)
+
+    return array
+
+
+# if __name__=="__main__":
+
+#     p = matrices_gen(SIMPLE_STUFF = True,N= 1000000 ,T = 150, do_plot = False)
+
 
 
