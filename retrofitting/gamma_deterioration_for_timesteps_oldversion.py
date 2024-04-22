@@ -1,7 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
-def matrices_gen(SIMPLE_STUFF,N,T,n): 
+'''
+With this gamma deterioration I  creaate probabilities for certain time steps. For example, I get probabilites for each n years and not for each year. 
+However this creates the problem that 
+1) you have to calculate the probabilities each time 
+2) the script is not really adjusted well and you might get nan or sum_zero rows 
+'''
+def matrices_gen(SIMPLE_STUFF,N,T,do_plot): 
     # this script was blindly ported from Matlab to Python...
     #In this script a custom gamma fucntio is used to describe the deterioration curve
     #
@@ -46,10 +51,10 @@ def matrices_gen(SIMPLE_STUFF,N,T,n):
             deterioration[i, t+1] = min(.9999999, float(deterioration[i, t+1]))
 
         plt.plot(deterioration[i, :])   # make an array of 1000 arrays. Each array contains the values of the line for the time t
-
-    D_mean = np.mean(deterioration, axis=0)
-    plt.plot(D_mean, linewidth=4, color="red")
-    plt.show()
+    if do_plot :
+        D_mean = np.mean(deterioration, axis=0)
+        plt.plot(D_mean, linewidth=4, color="red")
+        plt.show()
 
 
     # Define custom categories
@@ -84,36 +89,40 @@ def matrices_gen(SIMPLE_STUFF,N,T,n):
 
 
     # Define the value of n (e.g., every 5th year)
-    # n = 1
+    # # n = 1
 
-    # Calculate the number of time steps in the new probability array
-    T_new = T // n
+    # # Calculate the number of time steps in the new probability array
+    # T_new = T // n
 
-    # Create a new array to store transition probabilities for every nth year
-    p_n = np.zeros((n_bins-1, n_bins - 1, T_new))
+    # # Create a new array to store transition probabilities for every nth year
+    # p_n = np.zeros((n_bins-1, n_bins - 1, T_new))
 
-    # Iterate over categories and time steps
-    for i in range(n_bins):
-        for t in range(1, T_new + 1):
-            # Calculate the starting index of the original array for this nth year
-            start_index = (t - 1) * n
+    # # Iterate over categories and time steps
+    # for i in range(n_bins):
+    #     for t in range(1, T_new + 1):
+    #         # Calculate the starting index of the original array for this nth year
+    #         start_index = (t - 1) * n
             
-            # Calculate the ending index of the original array for this nth year
-            end_index = t * n if t < T_new else T
+    #         # Calculate the ending index of the original array for this nth year
+    #         end_index = t * n if t < T_new else T
             
-            # Sum the transition counts for this nth year
-            sum_counts = np.sum(trans_counts[i, :, start_index:end_index], axis=1)
+    #         # Sum the transition counts for this nth year
+    #         sum_counts = np.sum(trans_counts[i, :, start_index:end_index], axis=1)
             
-            # Calculate transition probabilities for this nth year
-            if np.sum(sum_counts) > 0:
-                p_n[i, :, t - 1] = sum_counts[:-1] / np.sum(sum_counts[:-1])  # Exclude the last category
+    #         # Calculate transition probabilities for this nth year
+    #         if np.sum(sum_counts) > 0:
+    #             p_n[i, :, t - 1] = sum_counts[:-1] / np.sum(sum_counts[:-1])  # Exclude the last category
 
     # Save the new transition probabilities array
     # np.save("transition_matrices_n.npy", p_n)
 
-    # # Save transition matrices
-    # if SIMPLE_STUFF:
-    #     np.save("transition_matrices_simple.npy", p)
-    # else:
-    #     np.save("transition_matrices_complex.npy", p)
-    return p_n
+    # Save transition matrices
+    if SIMPLE_STUFF:
+        np.save("transition_matrices_simple.npy", p)
+    else:
+        np.save("transition_matrices_complex.npy", p)
+    return p
+
+if __name__=="__main__":
+
+    p = matrices_gen(SIMPLE_STUFF = True,N= 1000000 ,T = 150, do_plot = False)
