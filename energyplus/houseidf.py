@@ -181,17 +181,66 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity,
     # heatpump = idf.newidfobject("HVACTEMPLATE:ZONE:WATERTOAIRHEATPUMP")
     # heatpump.Heat_Pump_Heating_Coil_Gross_Rated_COP =3 
     # heatpump.Template_Thermostat_Name = 'Zone Stat'
+    
+    
+    # heating = idf.newidfobject('COIL:HEATING:FUEL')
+    # heating.Name = 'Block 1'
+    # heating.Availability_Schedule_Name = 'AvailSched'
+    # heating.Fuel_Type = 'NaturalGas'
+    # heating.Burner_Efficiency = 0.6
+    # heating.Air_Inlet_Node_Name = 'Block House Storey 0'
+    # heating.Air_Outlet_Node_Name = 'Block House Storey 1'
+
+    hotwater = idf.newidfobject('BOILER:HOTWATER')
+    hotwater.Name = 'Central Boiler'
+    hotwater.Fuel_Type = 'NaturalGas'
+    hotwater.Nominal_Capacity = 'autosize'
+    hotwater.Nominal_Thermal_Efficiency = 0.8
+    hotwater.Efficiency_Curve_Temperature_Evaluation_Variable = 'LeavingBoiler'
+    hotwater.Normalized_Boiler_Efficiency_Curve_Name =  'BoilerEfficiency'
+    hotwater.Design_Water_Flow_Rate = 'autosize'
+    hotwater.Minimum_Part_Load_Ratio = 0.0
+    hotwater.Maximum_Part_Load_Ratio = 1.2
+    hotwater.Optimum_Part_Load_Ratio = 1.0
+    hotwater.Boiler_Water_Inlet_Node_Name = 'Central Boiler Inlet Node'
+    hotwater.Boiler_Water_Outlet_Node_Name = 'Central Boiler Outlet Node'
+    hotwater.Water_Outlet_Upper_Temperature_Limit = 100
+    hotwater.Boiler_Flow_Mode = 'LeavingSetpointModulated'
+
+    airtightness = idf.newidfobject('AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING')
+    print(airtightness)
+    airtightness.Name = 'Window 1'
+    airtightness.Air_Mass_Flow_Coefficient_When_Opening_is_Closed = 0.01
+    airtightness.Air_Mass_Flow_Exponent_When_Opening_is_Closed = 0.65
+    airtightness.Number_of_Sets_of_Opening_Factor_Data = 2
+    airtightness.Opening_Factor_2 = 1
+
+    airtightness_zone =  idf.newidfobject('AIRFLOWNETWORK:MULTIZONE:ZONE')
+    airtightness_zone.Zone_Name = 'Block House Storey 0'
+    airtightness_zone.Ventilation_Control_Mode = 'Temperature'
+
+    airtightness_surface = idf.newidfobject('AIRFLOWNETWORK:MULTIZONE:SURFACE')
+    print(airtightness_surface)
+    airtightness_surface.Surface_Name = 'Block House Storey 0 Wall 0001'
+    airtightness_surface.Leakage_Component_Name = 'Crack 1'
+
+
 
     for zone in idf.idfobjects["ZONE"]:
             idf.newidfobject("HVACTEMPLATE:ZONE:IDEALLOADSAIRSYSTEM",Zone_Name=zone.Name,Template_Thermostat_Name=stat.Name,)
 
-    # print(idf.idfobjects["ZONE"])
 
+    print(idf.idfobjects["ZONE"])
+
+    idf.newidfobject("OUTPUT:VARIABLE", Key_Value ="Block House Storey 0",Variable_Name = 'Zone Air Infiltration Rate', Reporting_Frequency="Hourly")
+    idf.newidfobject("OUTPUT:VARIABLE", Key_Value ="Central Boiler",Variable_Name = 'Boiler Gas Rate', Reporting_Frequency="Hourly")
+    # idf.newidfobject("OUTPUT:VARIABLE", Variable_Name="Heating Coil Heating Energy", Reporting_Frequency="Hourly")
     idf.newidfobject("OUTPUT:VARIABLE", Variable_Name="Utility Use Per Conditioned Floor Area")
     idf.newidfobject("OUTPUT:VARIABLE", Variable_Name="Zone Ideal Loads Supply Air Total Heating Energy",
                     Reporting_Frequency="Hourly")
     idf.newidfobject("OUTPUT:VARIABLE", Variable_Name="Zone Ideal Loads Supply Air Total Cooling Energy",
                     Reporting_Frequency="Hourly")
+    
 
     idf.view_model()
 
