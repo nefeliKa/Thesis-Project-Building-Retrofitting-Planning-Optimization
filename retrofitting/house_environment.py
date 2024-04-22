@@ -96,7 +96,7 @@ class House(Env):
         else:
         
             if calculate_gamma_distribution_probabilities == False:
-                load = np.load("transition_matrices_trial.npy")
+                load = np.load("transition_matrices.npy")
             else : 
                 load = matrices_gen(SIMPLE_STUFF = True, N = 1000000, T = self.num_years, do_plot = False)
             
