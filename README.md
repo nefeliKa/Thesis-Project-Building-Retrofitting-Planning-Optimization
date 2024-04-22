@@ -18,5 +18,6 @@
    E.g. `python retrofitting/run_episodes.py`
 ### Thesis writing
 1. First time during setup: `cd report && make docker`
-2. Make your changes...
-3. `make simple` to get the `thesis.pdf` file
+2. In a windows command prompt: `wsl`
+3. Make your changes...
+4. `make simple` to get the `thesis.pdf` file
