@@ -64,7 +64,8 @@ class House(Env):
                         state_number += 1
         return state_space
 
-    def get_state_space(num_damage_states: int, num_years: int, time_step: int):
+#State space as a dictionary with ages 
+    def get_state_space_with_ages(num_damage_states: int, num_years: int, time_step: int):
         state_space = {}
         state_number = 0
         for time in range(0,(num_years+time_step),time_step):
@@ -94,7 +95,27 @@ class House(Env):
         #     new_dict[index] = state_space[state_name]
 
         return state_space
+    
+#State space as a numpy with ages
+    def get_state_space(num_damage_states: int, num_years: int, time_step: int):
+            state_space = np.empty((0,7))
+            # state_number = 0
+            for time in range(0,(num_years+time_step),time_step):
+                for r_damage_state in range(num_damage_states):
+                    for w_damage_state in range(num_damage_states):
+                        for c_damage_state in range(num_damage_states):
+                            for age_r in range(0,num_years+time_step,time_step):
+                                for age_w in range(0,num_years+time_step,time_step):
+                                    for age_f in range(0,num_years+time_step,time_step):
+                                        state = np.array([time,r_damage_state,w_damage_state,c_damage_state,age_r,age_w,age_f])
+                                        state_space = np.vstack([state_space, state])
+                                        # state_space[state_number] = (time,r_damage_state, w_damage_state, c_damage_state,age_r,age_w,age_f)
+                                        # state_number += 1
+            
 
+
+            return state_space
+    
     @staticmethod
     def get_state_transition_model_old(num_actions: int, state_space: dict, time_step:int, num_years:int):
         num_damage_states = 3  # good, medium, bad
