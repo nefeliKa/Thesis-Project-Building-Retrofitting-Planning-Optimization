@@ -37,7 +37,7 @@ class House(Env):
         # [roof, wall, cellar]
         # self.energy_demand_nominal = [57, 95, 38]
         self.degradation_rates = [0.0, 0.2, 0.5]
-        self.energy_bills = self.get_state_electricity_bill(state_space = self.state_space,kwh_per_state=self.kwh_per_state)
+        # self.energy_bills = self.get_state_electricity_bill(state_space = self.state_space,kwh_per_state=self.kwh_per_state)
         self.material_probability_matrices,self.action_matrices = \
                                                 self.import_gamma_probabilities(calculate_gamma_distribution_probabilities= True,
                                                 step_size=self.time_step,SIMPLE_STUFF = True, 
@@ -196,26 +196,25 @@ class House(Env):
                 list_probs = []
                 number = 0
                 for action in range(num_actions): 
-                    # list = []
                     number+=1
                     array_list = []
-                    # array = np.zeros(3,7000*30)
                     array = np.empty((0, 3))
-                    for key in state_space.keys(): # get state number
-                        if state_space[key][0] != num_years:
-                            # row = []
-                            year = state_space[key][0]
-                            # Find keys where the first number of the tuple is equal to the desired number
-                            keys_with_desired_number = [state for state in state_space.keys() if state_space[state][0] == year+time_step]
-                            # tic = time.time()
-                            for future_key in keys_with_desired_number: # get future state number
+                    for current_state_index in range(len(state_space)): # get state number
+                        current_state = state_space[current_state_index]
+                        if int(current_state[0]) != num_years:
+                            year = current_state[0]
+                            # Find indices where the first value of each row equals to the next year from the state space that we are in now
+                            indices = np.where(state_space[:, 0] == year+time_step)
+                            tic = time.time()
+                            for future_state in indices[0]: # get future state index number
+                                future_key = state_space[future_state]  # get the tuple describing the next state 
                                 future_states_probabilities = np.zeros(3)
                                 for i in range(num_damage_states): #get the damage state 
                                     action_array = action_one_hot_enc[action][i] #get the action for that
-                                    current_component_st = state_space[key][i+1] # since the first number is the time, start with the second
-                                    future_component_st = state_space[future_key][i+1]
-                                    current_component_age = state_space[key][i+4] 
-                                    future_component_age = state_space[future_key][i+4]
+                                    current_component_st = int(current_state[i+1]) # since the first number is the time, start with the second
+                                    future_component_st = int(future_key[i+1])
+                                    current_component_age = int(current_state[i+4]) 
+                                    future_component_age = int(future_key[i+4])
                                     age_to_index_convertion = int(current_component_age/time_step) if current_component_age != 0 else 0
                                     if action_array == 0 :
                                         if future_component_age == current_component_age+time_step:
@@ -228,26 +227,23 @@ class House(Env):
                                 
                                 new_probability = np.prod(future_states_probabilities)   
                                 if new_probability != 0:
-                                    new_row = np.array([key, future_key,new_probability])
-                                    # list_try.append(value)
+ 
+                                    new_row = np.array([current_state_index,future_state,new_probability])
                                     array = np.vstack([array, new_row])
-                            # toc = time.time()
-                            # print(toc - tic)
-                        elif state_space[key][0] == num_years  and state_space[key] == state_space[future_key]:
+                            toc = time.time()
+                            print(toc - tic)
+                        elif state_space[current_state][0] == num_years  and state_space[current_state] == state_space[future_key]:
                             new_probability = 1 # make sure that the final state can only go to itself and no other state 
-                            new_row = np.array([key, future_key, new_probability])
+                            new_row = np.array([current_state, future_state, new_probability])
                             array = np.vstack([array, new_row])
-                            # list_try.append(value)
-                            # row.append(new_probability)
-                        # STATE_TRANSITION_MODEL[action][key] = row
-                        # sum = np.sum(STATE_TRANSITION_MODEL[action][key])
-                        # list.append(sum)
+
+                    # Filter rows where the first value of each row is 0
+                    # filtered_rows = array[array[:, 0] == 0]
+                    # # Sum the values in the third column of the filtered rows
+                    # sum_of_third_column = np.sum(filtered_rows[:, 2])
                     array_list.append(array)
                     print(number)
-                    # list_probs.append(list_try)
-                    # list2.append(list)
-                # Convert the dense array to a sparse matrix
-                # sparse_matrix = csr_matrix(STATE_TRANSITION_MODEL)
+
 
                 return list_probs
 
