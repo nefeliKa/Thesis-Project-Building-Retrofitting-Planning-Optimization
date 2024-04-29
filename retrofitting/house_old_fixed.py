@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 import pickle 
 import csv
-from scipy.sparse import csr_matrix
+from scipy.sparse import lil_matrix
 from gamma_deterioration import matrices_gen 
 import time
+from scipy.sparse import csr_matrix
 
 class House(Env):
     def __init__(self, house_size_m2: float = 120):
@@ -19,8 +20,8 @@ class House(Env):
         # 3   # FIX_FACADE
         self.current_state = 0
         self.time = 0
-        self.num_years = 30
-        self.time_step = 10
+        self.num_years = 10
+        self.time_step = 5
         self.action_space = spaces.Discrete(4)
         self.state_space = House.get_state_space(num_damage_states=self.num_damage_states,
                                                  num_years= self.num_years,
@@ -44,12 +45,12 @@ class House(Env):
                                                 N = 1000, do_plot= False, T = self.num_years+self.time_step,
                                                 save_probabilities = True)
         # self.state_transition_model = House.get_state_transition_model(num_actions=self.num_actions, state_space=self.state_space, time_step= self.time_step,num_years = self.num_years)
-        self.state_transition_model = self.get_state_transition_model(num_actions=self.num_actions,
-                                                                      state_space=self.state_space, 
-                                                                      time_step= self.time_step,
-                                                                      num_years = self.num_years,
-                                                                      material_probability_matrices= self.material_probability_matrices,
-                                                                      action_matrices=self.action_matrices)
+        # self.state_transition_model = self.get_state_transition_model(num_actions=self.num_actions,
+        #                                                               state_space=self.state_space, 
+        #                                                               time_step= self.time_step,
+        #                                                               num_years = self.num_years,
+        #                                                               material_probability_matrices= self.material_probability_matrices,
+        #                                                               action_matrices=self.action_matrices)
  
 ####################################################################################################
 
@@ -96,7 +97,7 @@ class House(Env):
 
         return state_space
     
-#State space as a numpy with ages
+#State space as a numpy with ages and time
     def get_state_space(num_damage_states: int, num_years: int, time_step: int):
             state_space = np.empty((0,7))
             # state_number = 0
@@ -111,10 +112,48 @@ class House(Env):
                                         state_space = np.vstack([state_space, state])
                                         # state_space[state_number] = (time,r_damage_state, w_damage_state, c_damage_state,age_r,age_w,age_f)
                                         # state_number += 1
-            
-
 
             return state_space
+
+#State space as a numpy with ages and time and cleared of all the states that we do not need
+    def get_state_space_cleared(num_damage_states: int, num_years: int, time_step: int):
+            state_space = np.empty((0,7))
+            # state_number = 0
+            for time in range(0,(num_years+time_step),time_step):
+                for r_damage_state in range(num_damage_states):
+                    for w_damage_state in range(num_damage_states):
+                        for c_damage_state in range(num_damage_states):
+                            for age_r in range(0,num_years+time_step,time_step):
+                                for age_w in range(0,num_years+time_step,time_step):
+                                    for age_f in range(0,num_years+time_step,time_step):
+                                        state = np.array([time,r_damage_state,w_damage_state,c_damage_state,age_r,age_w,age_f])
+                                        state_space = np.vstack([state_space, state])
+                                        # state_space[state_number] = (time,r_damage_state, w_damage_state, c_damage_state,age_r,age_w,age_f)
+                                        # state_number += 1
+
+            ## Create a list to store keys to delete
+            new_state_space = np.empty((0,7))
+            for index,state in enumerate(state_space):
+                if state[0] >= state[4] and state[0] >= state[5] and state[0] >= state[6] :
+                   new_state_space = np.vstack([new_state_space, state])
+
+            return state_space
+
+#State space as a numpy with only ages for the transition models.
+    def get_state_space_np_ages(num_damage_states: int, num_years: int, time_step: int):
+                state_space = np.empty((0,6))
+                # state_number = 0
+                for r_damage_state in range(num_damage_states):
+                    for w_damage_state in range(num_damage_states):
+                        for c_damage_state in range(num_damage_states):
+                            for age_r in range(0,num_years+time_step,time_step):
+                                for age_w in range(0,num_years+time_step,time_step):
+                                    for age_f in range(0,num_years+time_step,time_step):
+                                        state = np.array([r_damage_state,w_damage_state,c_damage_state,age_r,age_w,age_f])
+                                        state_space = np.vstack([state_space, state])
+                                        # state_space[state_number] = (time,r_damage_state, w_damage_state, c_damage_state,age_r,age_w,age_f)
+                                        # state_number += 1
+                return state_space
     
     @staticmethod
     def get_state_transition_model_old(num_actions: int, state_space: dict, time_step:int, num_years:int):
@@ -186,29 +225,29 @@ class House(Env):
                 list2.append(list)
 
             return STATE_TRANSITION_MODEL
-
-    def get_state_transition_model(self, num_actions: int, state_space: dict, time_step:int, num_years:int,material_probability_matrices:np.array, action_matrices:np.array):
+#newer, using np. still slow
+    def get_state_transition_model_npversion(self, num_actions: int, state_space: dict, time_step:int, num_years:int,material_probability_matrices:np.array, action_matrices:np.array):
                 num_damage_states = 3  # good, medium, bad
 
                 # Calculate transition model of system
                 action_one_hot_enc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
-                list2 = []
                 list_probs = []
-                number = 0
+                # number = 0
+
                 for action in range(num_actions): 
-                    number+=1
-                    array_list = []
+                    # number+=1
+                    arrays = []
+                    number = 0
                     array = np.empty((0, 3))
-                    for current_state_index in range(len(state_space)): # get state number
-                        current_state = state_space[current_state_index]
-                        if int(current_state[0]) != num_years:
-                            year = current_state[0]
-                            # Find indices where the first value of each row equals to the next year from the state space that we are in now
-                            indices = np.where(state_space[:, 0] == year+time_step)
-                            tic = time.time()
-                            for future_state in indices[0]: # get future state index number
-                                future_key = state_space[future_state]  # get the tuple describing the next state 
-                                future_states_probabilities = np.zeros(3)
+                    for current_state_index,current_state in enumerate(state_space): # get state number
+                        year = current_state[0]
+                        # Find indices where the first value of each row equals to the next year from the state space that we are in now
+                        indices = np.where(state_space[:, 0] == year+time_step)[0]
+                        tic = time.time()
+                        for future_state in indices: # get future state index number
+                            future_key = state_space[future_state]  # get the tuple describing the next state 
+                            future_states_probabilities = np.zeros(3)
+                            if int(current_state[0]) != num_years:
                                 for i in range(num_damage_states): #get the damage state 
                                     action_array = action_one_hot_enc[action][i] #get the action for that
                                     current_component_st = int(current_state[i+1]) # since the first number is the time, start with the second
@@ -227,25 +266,180 @@ class House(Env):
                                 
                                 new_probability = np.prod(future_states_probabilities)   
                                 if new_probability != 0:
- 
                                     new_row = np.array([current_state_index,future_state,new_probability])
-                                    array = np.vstack([array, new_row])
-                            toc = time.time()
-                            print(toc - tic)
-                        elif state_space[current_state][0] == num_years  and state_space[current_state] == state_space[future_key]:
-                            new_probability = 1 # make sure that the final state can only go to itself and no other state 
-                            new_row = np.array([current_state, future_state, new_probability])
-                            array = np.vstack([array, new_row])
+                                    arrays.append(new_row)
+                                    # array = np.vstack([array, new_row])
+                                toc = time.time()
+                                print(toc - tic)
+                            elif current_state[0] == num_years  and current_state == future_key:
+                                new_probability = 1 # make sure that the final state can only go to itself and no other state 
+                                new_row = np.array([current_state, future_state, new_probability])
+                                arrays.append(new_row)
+                        # array = np.vstack([array, new_row])
 
                     # Filter rows where the first value of each row is 0
                     # filtered_rows = array[array[:, 0] == 0]
                     # # Sum the values in the third column of the filtered rows
                     # sum_of_third_column = np.sum(filtered_rows[:, 2])
-                    array_list.append(array)
+                    # array_list.append(array)
+                    list_probs.append(np.vstack(arrays))
+                    
                     print(number)
 
-
+                np.save('probabilities_np.npy',list_probs)
                 return list_probs
+
+#newer, using np., a bit faster,wth sparse matrices 
+    def get_state_transition_model(self, num_actions: int, state_space: dict, time_step:int, num_years:int,material_probability_matrices:np.array, action_matrices:np.array):
+                    num_damage_states = 3  # good, medium, bad
+
+                    # Calculate transition model of system
+                    action_one_hot_enc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
+                    list_probs = []
+                    # number = 0
+
+                    for action in range(num_actions): 
+                        # number+=1
+                        arrays = []
+                        number = 0
+                        # Get all rows of state_space where the first value is 0
+                        states_t0 = state_space[state_space[:, 0] == 0]
+                        states_t1 = state_space[state_space[:, 0] == time_step]
+                        # assert len(states_t0) == len(states_t1)
+                        transitions_t0_t1_1 = lil_matrix((len(states_t0), len(states_t1)))
+                        transitions_t0_t1 = np.zeros((len(states_t0), len(states_t1)))
+                        row_transitions_t0_t1 = 0
+                        for current_state in states_t0: # get state number
+                            # tic = time.time()
+                            col_transitions_t0_t1 = 0
+                            for future_state in states_t1: # get future state index number
+                                future_states_probabilities = np.zeros(3)   # 1 prob per component (Wall, Roof, Cellar)
+                                for i in range(num_damage_states): #get the damage state 
+                                    component_action = action_one_hot_enc[action][i] #get the action for that (do nothing OR renovate)
+                                    current_component_st = int(current_state[i+1]) # since the first number is the time, start with the second
+                                    future_component_st = int(future_state[i+1])
+                                    current_component_age = int(current_state[i+4]) 
+                                    future_component_age = int(future_state[i+4])
+                                    age_to_index_convertion = int(current_component_age/time_step) if current_component_age != 0 else 0
+                                    if component_action == 0 :  # Do nothing
+                                        if future_component_age == current_component_age+time_step:
+                                            probability = material_probability_matrices[age_to_index_convertion][current_component_st][future_component_st]
+                                        else :
+                                            probability = 0
+                                    else:                       # Renovate
+                                        probability = action_matrices[current_component_st][future_component_st]
+                                    future_states_probabilities[i] = probability
+                                
+                                total_prob = np.prod(future_states_probabilities)   
+                                transitions_t0_t1_1[row_transitions_t0_t1, col_transitions_t0_t1] = total_prob
+                                transitions_t0_t1[row_transitions_t0_t1, col_transitions_t0_t1] = total_prob
+                                col_transitions_t0_t1 += 1
+                            # assert np.isclose(np.sum(transitions_t0_t1[row_transitions_t0_t1, :]), 1, atol=1e-5)
+
+                            row_transitions_t0_t1 += 1
+                                # toc = time.time()
+                                # print(toc - tic)
+
+                            # array = np.vstack([array, new_row])
+
+                        # Filter rows where the first value of each row is 0
+                        # filtered_rows = array[array[:, 0] == 0]
+                        # # Sum the values in the third column of the filtered rows
+                        # sum_of_third_column = np.sum(filtered_rows[:, 2])
+                        # array_list.append(array)
+ 
+                        list_probs.append(np.vstack(transitions_t0_t1.tocsr())) # Convert to Compressed Sparse Row format for efficient arithmetic operations
+
+                        # list_probs.append(np.vstack(arrays))
+                        
+                        print(number)
+
+                    np.save('probabilities_np.npy',list_probs)
+                    return list_probs
+
+    def calculate_probability_array_for_state(self,current_state,action): 
+
+        # Get info of state
+        state_info = self.state_space[current_state]
+        time_of_state = state_info[0]
+        future_time_of_state = time_of_state + self.time_step
+
+         #Make array to store data
+        new_probability_array = np.zeros((1,len(self.state_space)))
+
+        if time_of_state!= self.num_years:
+            #Find the state index in the transition matrix
+            #get the state 0
+            states_t0 = self.state_space[self.state_space[:, 0] == 0]
+            # Find the row where the values of columns 1 to 7 are the same as the state values (minus the time part)
+            target_row_index = np.where((states_t0[:, 1:7] == state_info[1:]).all(axis=1))[0]
+            index_of_current_state_in_probability_matrix = target_row_index[0]
+
+            #Get the next_state slices from the state_space. These are the only states that are not going to be zero     
+            # Find the indices where the first value of each row is the next timestep
+            indexes = np.where(self.state_space[:, 0] == future_time_of_state)[0]
+            first_index = indexes[0]
+            last_index = indexes[-1] + 1
+            index_places_to_populate_with_data = new_probability_array[first_index:last_index] 
+
+            # Load the saved sparse matrices
+            list_probs = np.load('probabilities_np.npy', allow_pickle=True)
+            probability_array_for_action = list_probs[action] 
+            probability_row_for_state_action = probability_array_for_action[index_of_current_state_in_probability_matrix].item()
+            # Convert the sparse row to a dense array
+            dense_row = probability_row_for_state_action.toarray()
+
+            # Assign the values to columns corresponding to the next state space
+            new_probability_array[:, first_index:last_index] = dense_row
+
+            sm = np.sum(new_probability_array)
+            print('bla')
+        
+        return new_probability_array
+
+
+    def get_state_transition_model0(self, num_actions: int, state_space: dict, time_step: int, num_years: int, material_probability_matrices: np.array, action_matrices: np.array):
+        num_damage_states = 3  # good, medium, bad
+
+        action_one_hot_enc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        list_probs = []
+
+        for action in range(num_actions): 
+            arrays = []
+            states_t0 = state_space[state_space[:, 0] == 0]
+            states_t1 = state_space[state_space[:, 0] == time_step]
+
+            transitions_t0_t1 = lil_matrix((len(states_t0), len(states_t1)))
+
+            for i, current_state in enumerate(states_t0):
+                for j, future_state in enumerate(states_t1):
+                    future_states_probabilities = np.zeros(num_damage_states)
+
+                    for k in range(num_damage_states):
+                        component_action = action_one_hot_enc[action][k]
+                        current_component_st = int(current_state[k + 1])
+                        future_component_st = int(future_state[k + 1])
+                        current_component_age = int(current_state[k + 4])
+                        future_component_age = int(future_state[k + 4])
+                        age_to_index_convertion = int(current_component_age / time_step) if current_component_age != 0 else 0
+
+                        if component_action == 0:  # Do nothing
+                            if future_component_age == current_component_age + time_step:
+                                probability = material_probability_matrices[age_to_index_convertion][current_component_st][future_component_st]
+                            else:
+                                probability = 0
+                        else:  # Renovate
+                            probability = action_matrices[current_component_st][future_component_st]
+                        future_states_probabilities[k] = probability
+                    total_prob = np.prod(future_states_probabilities)
+                    transitions_t0_t1[i, j] = total_prob
+
+            arrays.append(transitions_t0_t1.tocsr())
+            list_probs.append(arrays)
+
+        np.save('probabilities_np.npy', list_probs)
+        return list_probs
+
 
     def import_gamma_probabilities(self, calculate_gamma_distribution_probabilities:bool,
                                     step_size:int,SIMPLE_STUFF: bool, N :int, do_plot: bool,T:int,
@@ -422,14 +616,16 @@ class House(Env):
 
 if __name__=="__main__":
     env = House()
-    tyout = env.state_transition_model
+    # tyout = env.state_transition_model
+    bla  = env.calculate_probability_array_for_state(current_state =1000 ,action =0)
+    sm = np.sum(bla)
     # prob1 = env.material_probability_matrices
 
 #     bla = env.get_reward(action=0, current_state =0)
 #     bills = env.energy_bills
 #     states = env.state_space
 # #     s = states[25]
-    print('bills')
+    # print(bla)
 # #     print(bla)
 #     transitions = env.get_state_transition_model
 #     # state_space = env.state_space
