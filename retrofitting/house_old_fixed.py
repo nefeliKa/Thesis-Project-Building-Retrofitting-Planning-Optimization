@@ -20,7 +20,7 @@ class House(Env):
         # 3   # FIX_FACADE
         self.current_state = 0
         self.time = 0
-        self.num_years = 10
+        self.num_years = 60
         self.time_step = 5
         self.action_space = spaces.Discrete(4)
         self.state_space = House.get_state_space(num_damage_states=self.num_damage_states,
@@ -38,7 +38,7 @@ class House(Env):
         # [roof, wall, cellar]
         # self.energy_demand_nominal = [57, 95, 38]
         self.degradation_rates = [0.0, 0.2, 0.5]
-        # self.energy_bills = self.get_state_electricity_bill(state_space = self.state_space,kwh_per_state=self.kwh_per_state)
+        self.energy_bills = self.get_state_electricity_bill(state_space = self.state_space,kwh_per_state=self.kwh_per_state)
         self.material_probability_matrices,self.action_matrices = \
                                                 self.import_gamma_probabilities(calculate_gamma_distribution_probabilities= True,
                                                 step_size=self.time_step,SIMPLE_STUFF = True, 
@@ -391,9 +391,12 @@ class House(Env):
 
             # Assign the values to columns corresponding to the next state space
             new_probability_array[:, first_index:last_index] = dense_row
-
+        else: 
+            #Make array to store data
+            new_probability_array[0][current_state]= 1
             sm = np.sum(new_probability_array)
-            print('bla')
+
+            # print('bla')
         
         return new_probability_array
 
@@ -475,7 +478,8 @@ class House(Env):
             reward = 0
         return reward
 
-    def get_reward(self, action: int, current_state: int) -> float:
+#Calculate Reward according to the imported data
+    def get_reward_present(self, action: int, current_state: int) -> float:
         action_costs = self.renovation_costs[action]
         state_name = self.state_space[current_state][1:]
         total_energy_demand = self.kwh_per_state[state_name]
@@ -496,11 +500,35 @@ class House(Env):
         if  self.state_space[current_state][0] ==  self.num_years: 
             reward = 0
         return reward
-    
+
+    def get_reward(self, action: int, current_state: int) -> float:
+            
+            action_costs = self.renovation_costs[action]
+            state_name = self.state_space[current_state][1:4]
+            total_energy_demand = self.kwh_per_state[tuple(state_name)]
+            # if total_energy_demand > 210:
+            #     total_energy_demand = total_energy_demand * 2
+            energy_bills = House.energy2euros(total_energy_demand)
+            energy_bills = (energy_bills * self.house_size_m2)*self.time_step
+            # if total_energy_demand > 210:
+            #      energy_bills = 100000
+            # if  self.state_space[current_state][0] ==  0: 
+            #     net_cost = action_costs + (energy_bills)
+            # else:
+            #     net_cost = action_costs + (energy_bills*self.time_step)
+            net_cost = action_costs + (energy_bills*self.time_step)
+            reward = -net_cost
+
+            # place zero reward to final states /absorbing states  
+            if  self.state_space[current_state][0] ==  self.num_years: 
+                reward = 0
+            return reward 
+
     def get_state_electricity_bill(self,state_space,kwh_per_state):
         energy_bills = {}
-        for current_state in state_space.keys():
-            state_name = state_space[current_state][1:4]
+        for current_state in state_space:
+            current_state = tuple(current_state)
+            state_name = tuple(current_state[1:4])
             total_energy_demand = kwh_per_state[state_name]
             energy_bills[current_state] = total_energy_demand
 
@@ -528,7 +556,7 @@ class House(Env):
         list3 = [list,list2]
         return list3,dict
 
-    def get_transition_probs(self, current_state: int, action: int, time: int):
+    def get_transition_probs_old(self, current_state: int, action: int, time: int):
         """
         Function that calculates probabilities.
         Parameters
@@ -554,6 +582,35 @@ class House(Env):
             prob = self.state_transition_model[action][current_state][next_state]
             reward = self.get_reward(action=action, current_state=current_state)
             transition_probabilities.append((prob, next_state, reward))
+
+        return transition_probabilities
+
+    def get_transition_probs(self, current_state: int, action: int, time: int):
+        """
+        Function that calculates probabilities.
+        Parameters
+        ----------
+        current_state : int
+            The current state index.
+        action : int
+            The action index.
+        time : int
+            The current time in the episode.
+        Returns
+        -------
+        transition_probs : array
+            The transition probabilities for next states.
+        next_state : int
+            The next state index.
+        reward : float
+            The reward from taking the action.
+        """
+        transition_probabilities = np.zeros((self.num_states, 3))
+        probability_array = self.calculate_probability_array_for_state(current_state =current_state ,action = action)[0]
+        for next_state in range(self.num_states):
+            prob = probability_array[next_state]
+            reward = self.get_reward(action=action, current_state=current_state)
+            transition_probabilities[next_state, :] = [prob, next_state, reward]
 
         return transition_probabilities
 
@@ -593,8 +650,16 @@ class House(Env):
         self.time += self.time_step
 
         # Choose next state based on transition probabilities
-        next_state = np.random.choice(self.num_states, p=self.state_transition_model[action][self.current_state])
+        p= self.calculate_probability_array_for_state(current_state =self.current_state ,action =action)[0]
+        try:
+            next_state = np.random.choice(self.num_states, p=p)
 
+        except Exception as e:
+            # Handle the specific exception if it occurs
+            raise RuntimeError("The command failed: " + str(e) + ":" + str(p))
+
+
+        
         # Calculate state reward
         
         reward = self.get_reward(action, self.current_state)
@@ -614,12 +679,16 @@ class House(Env):
         pass
 
 
-if __name__=="__main__":
-    env = House()
-    # tyout = env.state_transition_model
-    bla  = env.calculate_probability_array_for_state(current_state =1000 ,action =0)
-    sm = np.sum(bla)
-    # prob1 = env.material_probability_matrices
+# if __name__=="__main__":
+#     env = House()
+#     state= env.num_years
+#     bla  = env.calculate_probability_array_for_state(current_state =1458 ,action =0)[0]
+#     sm = sum(bla)
+#     env.reset()
+#     env.current_state = state
+#     step = env.step(action = 0)
+#     sm = np.sum(bla)
+#     # prob1 = env.material_probability_matrices
 
 #     bla = env.get_reward(action=0, current_state =0)
 #     bills = env.energy_bills

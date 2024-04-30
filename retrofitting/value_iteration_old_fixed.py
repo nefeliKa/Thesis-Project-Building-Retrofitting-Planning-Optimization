@@ -33,6 +33,7 @@ def value_iteration(env: House):
                 transition_probs = env.get_transition_probs(current_state=idx_state, action=action, time=0)
                 for current_tuple in transition_probs:
                     prob, next_state, reward = current_tuple
+                    next_state = int(next_state)
                     q_val += prob * (reward + discount_factor * value_function[next_state])
                 q_values[idx_state, action] = q_val
 
