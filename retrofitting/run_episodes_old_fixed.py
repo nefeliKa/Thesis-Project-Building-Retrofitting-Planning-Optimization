@@ -66,7 +66,7 @@ def plot_histogram_comparisons(data1, data2):
     plt.ylabel("Frequency")
     plt.title("Histogram Comparison")
     plt.legend()
-
+    plt.savefig('Histogram Comparison.png', dpi=300)
     plt.show()
 
 
@@ -100,6 +100,7 @@ def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states:
     plt.title(f"{plot_title} policy")
 
     plt.grid()
+    plt.savefig(f'{plot_title}.png', dpi=300)
     plt.show()
 
 
@@ -141,21 +142,25 @@ def plot_energy_bills_for_policy(env: House, policy: list, rewards: np.ndarray, 
     plt.title(f"{plot_title} policy")
 
     plt.grid()
+    plt.savefig(f'{plot_title}.png', dpi=300)
     plt.show()
 
 if __name__ == "__main__":
-
+    print('House')
     env = House()
-    # zero_policy = [0 for _ in range(env.observation_space.n)] #create a zero policy
+    print('zero')
+    zero_policy = [0 for _ in range(env.observation_space.n)] #create a zero policy
 
     # print('Run_episodes zero')
     # # Evaluate "do-nothing" policy
-    # total_costs_zero_policy, rewards_all_episodes_zero_policy, states_all_episodes_zero_policy = run_episodes(env=env, policy=zero_policy, num_episodes=1000)  # run the zero policy
+    print('Zero_policy episodes is starting')
+    total_costs_zero_policy, rewards_all_episodes_zero_policy, states_all_episodes_zero_policy = run_episodes(env=env, policy=zero_policy, num_episodes=1000)  # run the zero policy
 
     # print('Run_episodes optimal')
     # # plot costs/policy/states for 1st episode
-    # plot_costs_for_policy(env, zero_policy, rewards_all_episodes_zero_policy[0], states_all_episodes_zero_policy[0], plot_title='"Do nothing"')
-    # plot_energy_bills_for_policy(env, zero_policy, rewards_all_episodes_zero_policy[0], states_all_episodes_zero_policy[0], plot_title='"Do nothing_Energy_bill"')
+
+    plot_costs_for_policy(env, zero_policy, rewards_all_episodes_zero_policy[0], states_all_episodes_zero_policy[0], plot_title='Do_nothing')
+    plot_energy_bills_for_policy(env, zero_policy, rewards_all_episodes_zero_policy[0], states_all_episodes_zero_policy[0], plot_title='Do_nothing_Energy_bill')
 
     # Evaluate using value iteration
     env.reset()
@@ -166,36 +171,39 @@ if __name__ == "__main__":
     # optimal_policy = np.load('optimal_policy.npy')
     # optimal_value = np.load('optimal_value.npy')
     # num_iterations = 3
+    print('Optimal_policy episodes  is starting')
     total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=1000)
 
     # # plot costs/policy/states for 1st episode
-    plot_costs_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[0], states_all_episodes_value_iteration[0], plot_title='Optimal Policy')
-    plot_energy_bills_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[0], states_all_episodes_value_iteration[0], plot_title='"Optimal Policy_Energy_bill"')
-    # print(f"Number of iterations for optimal policy: {num_iterations}")
-    # plot_histogram_comparisons(total_costs_zero_policy, total_costs_value_iteration)
+    plot_costs_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[0], states_all_episodes_value_iteration[0], plot_title='Optimal_Policy')
+    plot_energy_bills_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[0], states_all_episodes_value_iteration[0], plot_title='Optimal_Policy_Energy_bill')
+    print(f"Number of iterations for optimal policy: {num_iterations}")
+    plot_histogram_comparisons(total_costs_zero_policy, total_costs_value_iteration)
 
-    # #find the mean and the variance of each policy'
-    # #mean = policy1+policy2+policy3+...policyn / n
-    # #subtract the mean from each policy variance :v1= (mean - policy1)^2
-    # #variance = v1 + v2 +v3 +...vn / n
-    # mean_zero_policy = sum(total_costs_zero_policy)/ len(total_costs_zero_policy)
-    # mean_zero_variance = []
-    # for value in range(len(total_costs_zero_policy)): 
-    #     variance = (mean_zero_policy - total_costs_zero_policy[value])**2
-    #     mean_zero_variance.append(variance)
-    # mean_zero_variance = sum(mean_zero_variance)/len(mean_zero_variance)
-    # mean_zero_variance = np.sqrt(mean_zero_variance)
+    #find the mean and the variance of each policy'
+    #mean = policy1+policy2+policy3+...policyn / n
+    #subtract the mean from each policy variance :v1= (mean - policy1)^2
+    #variance = v1 + v2 +v3 +...vn / n
+    mean_zero_policy = sum(total_costs_zero_policy)/ len(total_costs_zero_policy)
+    mean_zero_variance = []
+    for value in range(len(total_costs_zero_policy)): 
+        variance = (mean_zero_policy - total_costs_zero_policy[value])**2
+        mean_zero_variance.append(variance)
+    mean_zero_variance = sum(mean_zero_variance)/len(mean_zero_variance)
+    mean_zero_variance = np.sqrt(mean_zero_variance)
 
-    # #find mean and variance for optimal policy
-    # mean_optimal_policy = sum(total_costs_value_iteration)/ len(total_costs_value_iteration)
-    # mean_optimal_variance = []
-    # for value in range(len(total_costs_value_iteration)): 
-    #     optimal_variance = (mean_optimal_policy - total_costs_value_iteration[value])**2
-    #     mean_optimal_variance.append(optimal_variance)
-    # mean_optimal_variance = sum(mean_optimal_variance)/len(mean_optimal_variance)
-    # mean_optimal_variance = np.sqrt(mean_optimal_variance)
+    #find mean and variance for optimal policy
+    mean_optimal_policy = sum(total_costs_value_iteration)/ len(total_costs_value_iteration)
+    mean_optimal_variance = []
+    for value in range(len(total_costs_value_iteration)): 
+        optimal_variance = (mean_optimal_policy - total_costs_value_iteration[value])**2
+        mean_optimal_variance.append(optimal_variance)
+    mean_optimal_variance = sum(mean_optimal_variance)/len(mean_optimal_variance)
+    mean_optimal_variance = np.sqrt(mean_optimal_variance)
 
-    # print(f"The mean return of optimal policy is: {mean_optimal_policy}. The variance is:{mean_optimal_variance} ")
+    print(f"The mean return of optimal policy is: {mean_optimal_policy}. The variance is:{mean_optimal_variance} ")
 
-    # print(f"The mean return of zero policy is: {mean_zero_policy}. The variance is:{mean_zero_variance} ")
-    # print(optimal_policy)
+    print(f"The mean return of zero policy is: {mean_zero_policy}. The variance is:{mean_zero_variance} ")
+    
+    np.save('optimal_policy.npy',optimal_policy)
+    print(optimal_policy)

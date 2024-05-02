@@ -3,9 +3,11 @@ import numpy as np
 from house_old_fixed import House
 import matplotlib.pyplot as plt
 import seaborn as sns
+import time
 
 
 def value_iteration(env: House):
+    print('Value Iteration is starting')
     discount_factor = 0.97**env.time_step
     # Initialise values of all states with 0
     value_function = np.zeros(env.num_states)
@@ -20,9 +22,11 @@ def value_iteration(env: House):
     while delta > delta_threshold:
         num_iterations += 1
         delta = 0
-
+        tic = time.time()
         # ignore terminal states, since value is 0
         for idx_state in range(env.num_states):
+            if idx_state % 2000 ==  0:
+                print(idx_state) 
             # if idx_state: 
             #     continue
             old_value = value_function[idx_state]
@@ -44,7 +48,10 @@ def value_iteration(env: House):
 
             delta = max([delta, np.abs(old_value - value_function[idx_state])])
     
-    print('Value_iteration_finished')
+    
+    toc = time.time()
+    print('Value_iteration_finished:')
+    print(toc-tic)
     return optimal_action, value_function, num_iterations
 
 
