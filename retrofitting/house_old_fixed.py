@@ -15,7 +15,7 @@ class House(Env):
     def __init__(self, house_size_m2: float = 120):
         super(House, self).__init__()
         self.num_damage_states = 3
-        self.num_actions = 4
+        self.num_actions = 8
         ##### ACTIONS #####
         # 0,  # DO_NOTHING
         # 1,  # FIX_ROOF
@@ -23,9 +23,9 @@ class House(Env):
         # 3   # FIX_FACADE
         self.current_state = 0
         self.time = 0
-        self.num_years = 20
-        self.time_step = 5
-        self.action_space = spaces.Discrete(4)
+        self.num_years = 50
+        self.time_step = 10
+        self.action_space = spaces.Discrete(8)
         self.state_space = House.get_state_space(num_damage_states=self.num_damage_states,
                                                  num_years= self.num_years,
                                                  time_step = self.time_step)
@@ -36,14 +36,14 @@ class House(Env):
         self.house_size_m2 = house_size_m2
 
         # # [cost_doNothing, cost_roof, cost_wall, cost_cellar]
-        self.renovation_costs = np.array([0, 13791, 16273, 5000])  # 
+        self.renovation_costs = np.array([0, 13791, 16273, 5000,(13791+16273),(13791+5000),(16273+5000),(13791+ 16273+ 5000)])  # 
 
         self.degradation_rates = [0.0, 0.2, 0.5]
         self.energy_bills = self.get_state_electricity_bill(state_space = self.state_space,kwh_per_state=self.kwh_per_state)
         self.material_probability_matrices,self.action_matrices = \
-                                                self.import_gamma_probabilities(calculate_gamma_distribution_probabilities= False,
+                                                self.import_gamma_probabilities(calculate_gamma_distribution_probabilities= True,
                                                 step_size=self.time_step,SIMPLE_STUFF = True, 
-                                                N = 1000000, do_plot= True, T = self.num_years+self.time_step,
+                                                N = 1000, do_plot= True, T = self.num_years+self.time_step,
                                                 save_probabilities = True)
         self.health_age_state_space, self.health_age_state_tansition_matrix = self.health_age_state_tansitions(num_damage_states= self.num_damage_states,num_years = self.num_years,material_probability_matrices = self.material_probability_matrices, action_matrices=self.action_matrices,time_step = self.time_step)        # self.state_transition_model = House.get_state_transition_model(num_actions=self.num_actions, state_space=self.state_space, time_step= self.time_step,num_years = self.num_years)
         self.state_transition_model = self.get_state_transition_model(num_actions=self.num_actions,
@@ -52,7 +52,7 @@ class House(Env):
                                                                       num_years = self.num_years,
                                                                       health_age_state_tansition_matrix =self.health_age_state_tansition_matrix,
                                                                       health_age_state_space= self.health_age_state_space,
-                                                                      load_saved_matrices = False)
+                                                                      load_saved_matrices = True)
  
 ####################################################################################################
 
@@ -135,7 +135,7 @@ class House(Env):
 
         else: 
             num_damage_states = 3  # good, medium, bad
-            action_one_hot_enc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])
+            action_one_hot_enc = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1],[1, 1, 0],[1, 0, 1],[0, 1, 1],[1, 1, 1]])
 
             # Initialize lists to store sparse matrices for each action
             sparse_matrices = [lil_matrix((len(state_space), len(state_space)), dtype=np.float64) for _ in range(num_actions)]
@@ -170,13 +170,38 @@ class House(Env):
                                                         (state_space[:, 4] == current_state[4]+time_step)&
                                                         (state_space[:, 6] == current_state[6]+time_step))[0]
 
-                    else : 
+                    elif action == 3: 
                         # Find indices where the first value is equal to current_state[0] + time_step and the fourth value is 0
                         future_states_indices = np.where((state_space[:, 0] == current_state[0] + time_step) &
                                                         (state_space[:, 4] == current_state[4]+time_step) &
                                                         (state_space[:, 5] == current_state[5]+time_step) &
                                                         (state_space[:, 6] == 0))[0]
-
+                    
+                    elif action == 4: 
+                        # Find indices where the first value is equal to current_state[0] + time_step and the fourth value is 0
+                        future_states_indices = np.where((state_space[:, 0] == current_state[0] + time_step) &
+                                                        (state_space[:, 4] == 0) &
+                                                        (state_space[:, 5] == 0) &
+                                                        (state_space[:, 6] == current_state[6]+time_step))[0]
+                    elif action == 5: 
+                        # Find indices where the first value is equal to current_state[0] + time_step and the fourth value is 0
+                        future_states_indices = np.where((state_space[:, 0] == current_state[0] + time_step) &
+                                                        (state_space[:, 4] == 0) &
+                                                        (state_space[:, 5] ==  current_state[5]+time_step) &
+                                                        (state_space[:, 6] == 0))[0]
+                    elif action == 6: 
+                        # Find indices where the first value is equal to current_state[0] + time_step and the fourth value is 0
+                        future_states_indices = np.where((state_space[:, 0] == current_state[0] + time_step) &
+                                                        (state_space[:, 4] == current_state[4]+time_step) &
+                                                        (state_space[:, 5] == 0) &
+                                                        (state_space[:, 6] == 0))[0]
+                    elif action == 6: 
+                        # Find indices where the first value is equal to current_state[0] + time_step and the fourth value is 0
+                        future_states_indices = np.where((state_space[:, 0] == current_state[0] + time_step) &
+                                                        (state_space[:, 4] == 0) &
+                                                        (state_space[:, 5] == 0) &
+                                                        (state_space[:, 6] == 0))[0]
+                        
                     # Iterate through the range of future state indices
                     for future_state_index in future_states_indices:
                         future_state = state_space[future_state_index]
@@ -374,15 +399,15 @@ class House(Env):
         pass
 
 
-# if __name__=="__main__":
-#     env = House()
-# #     tryout = env.health_age_state_tansition_matrix
-# # #     state= env.num_years
+if __name__=="__main__":
+    env = House()
+#     tryout = env.health_age_state_tansition_matrix
+# #     state= env.num_years
     
-#     probs = env.state_transition_model
+    probs = env.state_transition_model
 
 
-#     print('bla')
+    print('bla')
 
 
 

@@ -71,8 +71,8 @@ def plot_histogram_comparisons(data1, data2):
 
 
 def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states: np.ndarray, plot_title: str):
-    actions = {0: 'DN', 1: 'R', 2: 'W', 3: 'C'}
-    colors = {'DN': 'black', 'R': 'red', 'W': 'green', 'C': 'blue'}
+    actions = {0: 'DN', 1: 'R', 2: 'W', 3: 'C', 4: 'R+W', 5: 'R+F', 6: 'W+F', 7: 'All'}
+    colors = {'DN': 'black', 'R': 'red', 'W': 'green', 'C': 'blue', 'R+W': 'pink', 'R+F': 'olive', 'W+F': 'purple', 'All': 'Brown' }
     # labels = {'DN': 'do nothing', 'R': 'roof', 'W': 'wall', 'C': 'cellar'}
 
     time_axis = np.arange(0, env.num_years, env.time_step)
