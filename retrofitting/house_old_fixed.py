@@ -12,7 +12,7 @@ from multiprocessing import Pool
 
 
 class House(Env):
-    def __init__(self, house_size_m2: float = 120):
+    def __init__(self, house_size_m2: float = 176):
         super(House, self).__init__()
         self.num_damage_states = 3
         self.num_actions = 8
@@ -21,10 +21,22 @@ class House(Env):
         # 1,  # FIX_ROOF
         # 2,  # FIX_WALL
         # 3   # FIX_FACADE
+        self.groundfloor_area = 75.40
+        # self.groundfloor_area = 40
+        self.roof_area = 89.414567
+        # self.roof_area = 40
+        self.facade_area = 210.80
+        # self.facade_area = 45
+        self.cost_eps_floor_m2 = 28.91 #euros per m2
+        self.cost_eps_facade_m2 = 162.73
+        self.cost_eps_roof_m2 = 231.63 
+        self.floor_cost = self.groundfloor_area * self.cost_eps_floor_m2
+        self.facade_cost = self.facade_area * self.cost_eps_facade_m2
+        self.roof_cost = self.roof_area * self.cost_eps_roof_m2
         self.current_state = 0
         self.time = 0
-        self.num_years = 50
-        self.time_step = 10
+        self.num_years = 60
+        self.time_step = 5
         self.action_space = spaces.Discrete(8)
         self.state_space = House.get_state_space(num_damage_states=self.num_damage_states,
                                                  num_years= self.num_years,
@@ -32,14 +44,15 @@ class House(Env):
         self.num_states = len(self.state_space)
         self.observation_space = spaces.Discrete(self.num_states)
 
-        _, self.kwh_per_state = self.import_simulation_data(file_path='building_scenarios_copy.csv',no_windows=True)
+        _, self.kwh_per_state = self.import_simulation_data(file_path='building_scenarios.csv',no_windows=True)
         self.house_size_m2 = house_size_m2
 
         # # [cost_doNothing, cost_roof, cost_wall, cost_cellar]
-        self.renovation_costs = np.array([0, 13791, 16273, 5000,(13791+16273),(13791+5000),(16273+5000),(13791+ 16273+ 5000)])  # 
+        self.renovation_costs = np.array([0, self.roof_cost, self.facade_cost, self.floor_cost,(self.roof_cost+self.facade_cost),(self.roof_cost+self.floor_cost),(self.facade_cost+self.floor_cost),(self.roof_cost+self.facade_cost+self.floor_cost)])  # 
 
-        self.degradation_rates = [0.0, 0.2, 0.5]
+        # self.degradation_rates = [0.0, 0.2, 0.35]
         self.energy_bills = self.get_state_electricity_bill(state_space = self.state_space,kwh_per_state=self.kwh_per_state)
+        self.rewards = self.calculate_reward(save= True)
         self.material_probability_matrices,self.action_matrices = \
                                                 self.import_gamma_probabilities(calculate_gamma_distribution_probabilities= True,
                                                 step_size=self.time_step,SIMPLE_STUFF = True, 
@@ -52,7 +65,8 @@ class House(Env):
                                                                       num_years = self.num_years,
                                                                       health_age_state_tansition_matrix =self.health_age_state_tansition_matrix,
                                                                       health_age_state_space= self.health_age_state_space,
-                                                                      load_saved_matrices = True)
+                                                                      load_saved_matrices = False)
+        # self.rewards = self.calculate_reward(save= True)
  
 ####################################################################################################
 
@@ -195,7 +209,7 @@ class House(Env):
                                                         (state_space[:, 4] == current_state[4]+time_step) &
                                                         (state_space[:, 5] == 0) &
                                                         (state_space[:, 6] == 0))[0]
-                    elif action == 6: 
+                    elif action == 7: 
                         # Find indices where the first value is equal to current_state[0] + time_step and the fourth value is 0
                         future_states_indices = np.where((state_space[:, 0] == current_state[0] + time_step) &
                                                         (state_space[:, 4] == 0) &
@@ -219,7 +233,9 @@ class House(Env):
 
                             new_probability = np.prod(future_states_probabilities)
                             sparse_matrices[action][current_state_index, future_state_index] = new_probability
-
+                        elif current_state[0] == num_years and current_state == future_state:
+                             sparse_matrices[action][current_state_index, future_state_index] = 1
+                            
 
             # Save each sparse matrix in the list separately
         # Save each sparse matrix in the list separately
@@ -245,18 +261,33 @@ class House(Env):
         price_kwh = 0.35
         return price_kwh * num_of_kwh
 
+    def calculate_reward(self,save: bool): 
+        print('I am inside rewards')
+        if save:
+            action_array = np.zeros((self.num_actions,self.num_states))
+            for action in range(self.num_actions): 
+                for state in range(self.num_states): 
+                    action_array[action,state] = self.get_reward(action,state)
+            
+            np.save('action_array.npy',action_array)
+        else: 
+            action_array = np.load('action_array.npy')
+        return action_array
+    
     def get_reward(self, action: int, current_state: int) -> float:
             
             action_costs = self.renovation_costs[action]
             state_name = self.state_space[current_state][1:4]
             total_energy_demand = self.kwh_per_state[tuple(state_name)]
-            # if total_energy_demand > 210:
+            # if total_energy_demand >= 225:
             #     total_energy_demand = total_energy_demand * 2
+            total_energy_demand = total_energy_demand* 250 #multiply by square meters
             energy_bills = House.energy2euros(total_energy_demand)
-            if current_state == 0:
+            if self.state_space[current_state][0] == 0:
                 energy_bills = (energy_bills)
             else: 
                 energy_bills = (energy_bills)*self.time_step
+            # energy_bills = (energy_bills)*self.time_step
             # if total_energy_demand > 210:
             #      energy_bills = 100000
             # if  self.state_space[current_state][0] ==  0: 
@@ -269,15 +300,16 @@ class House(Env):
             # place zero reward to final states /absorbing states  
             if  self.state_space[current_state][0] ==  self.num_years: 
                 reward = 0
+
             return reward 
 
     def get_state_electricity_bill(self,state_space,kwh_per_state):
         energy_bills = {}
         for current_state in state_space:
-            current_state = tuple(current_state)
-            state_name = tuple(current_state[1:4])
-            total_energy_demand = kwh_per_state[state_name]
-            energy_bills[current_state] = total_energy_demand
+            current_state = current_state.astype(int)
+            state_name = current_state[1:4]
+            total_energy_demand = kwh_per_state[tuple(state_name.astype(int))]
+            energy_bills[tuple(current_state)] = total_energy_demand
 
         return energy_bills
 
@@ -290,13 +322,15 @@ class House(Env):
             val = 3
         else: 
             val = 1
-        for indx in range(0,len(data),val):
-            kwh_per_m2 = data['energy[kWh]'][indx]
+        for indx in range(0,len(data)):
+        # for indx in range(0,len(data),val):
+            kwh_per_m2 = data['energy[kWh/m2]'][indx]
             string = data['state'][indx]
             # Remove the parentheses and split the string by commas
             split_string = string.strip("()").split(", ")
             # Extract the first three numbers as integers
-            state = tuple(int(num_str) - 1 for num_str in split_string[:3])
+            # state = tuple(int(num_str) -1 for num_str in split_string[:3])
+            state = tuple(int(num_str)  for num_str in split_string[:3])
             dict[state] = kwh_per_m2  
             list.append(kwh_per_m2)
             list2.append(state)  
@@ -323,15 +357,23 @@ class House(Env):
         reward : float
             The reward from taking the action.
         """
-        transition_probabilities = np.zeros((self.num_states, 3))
+        # transition_probabilities = np.zeros((self.num_states, 3))
+        transition_probabilities2 = np.zeros((self.num_states, 3))
+        # print('before')
         # Convert the sparse matrix to a dense matrix
         probability_array = self.state_transition_model[action][current_state].toarray()[0]
-        for next_state in range(self.num_states):
-            prob = probability_array[next_state]
-            reward = self.get_reward(action=action, current_state=current_state)
-            transition_probabilities[next_state, :] = [prob, next_state, reward]
+        # print('btwn')
+        transition_probabilities2[:,0] = probability_array
+        transition_probabilities2[:,1] = np.arange(0,self.num_states)
+        transition_probabilities2[:,2] = self.rewards[action,current_state]
+        # for next_state in range(self.num_states):
+        #     prob = probability_array[next_state]
+        #     # reward = self.get_reward(action=action, current_state=current_state)
+        #     reward = self.rewards[action,current_state]
+        #     transition_probabilities[next_state, :] = [prob, next_state, reward]
+        # print("after")
 
-        return transition_probabilities
+        return transition_probabilities2
 
     def reset(self):
         """
@@ -376,7 +418,7 @@ class House(Env):
 
         except Exception as e:
             # Handle the specific exception if it occurs
-            raise RuntimeError("The command failed: " + str(e) + ":" + str(p))
+            raise RuntimeError("The command failed: " + str(e) + ":" + str(probability_array))
 
 
         
@@ -399,15 +441,16 @@ class House(Env):
         pass
 
 
-if __name__=="__main__":
-    env = House()
-#     tryout = env.health_age_state_tansition_matrix
-# #     state= env.num_years
+# if __name__=="__main__":
+#     env = House()
+#     r = env.rewards
+# # #     tryout = env.health_age_state_tansition_matrix
+# # # #     state= env.num_years
     
-    probs = env.state_transition_model
+# #     probs = env.state_transition_model
 
 
-    print('bla')
+#     print('bla')
 
 
 

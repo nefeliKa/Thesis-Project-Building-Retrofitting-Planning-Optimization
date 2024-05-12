@@ -15,7 +15,7 @@ import numpy as np
 def run_episodes(env: House, num_episodes: int ,policy: list = None, ): 
     total_costs_episodes = []
 
-    num_time_steps = env.num_years // env.time_step
+    num_time_steps = (env.num_years // env.time_step)+1
     rewards_all_episodes = np.zeros((num_episodes, num_time_steps))
     states_all_episodes = np.zeros((num_episodes, num_time_steps))
 
@@ -67,7 +67,7 @@ def plot_histogram_comparisons(data1, data2):
     plt.title("Histogram Comparison")
     plt.legend()
     plt.savefig('Histogram Comparison.png', dpi=300)
-    plt.show()
+    # plt.show()
 
 
 def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states: np.ndarray, plot_title: str):
@@ -75,7 +75,7 @@ def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states:
     colors = {'DN': 'black', 'R': 'red', 'W': 'green', 'C': 'blue', 'R+W': 'pink', 'R+F': 'olive', 'W+F': 'purple', 'All': 'Brown' }
     # labels = {'DN': 'do nothing', 'R': 'roof', 'W': 'wall', 'C': 'cellar'}
 
-    time_axis = np.arange(0, env.num_years, env.time_step)
+    time_axis = np.arange(0, env.num_years+env.time_step, env.time_step)
     plt.plot(time_axis, rewards, marker='o', linestyle='-')
     for i, (xi, yi) in enumerate(zip(time_axis, rewards)):
         k = int(states[i])
@@ -101,12 +101,12 @@ def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states:
 
     plt.grid()
     plt.savefig(f'{plot_title}.png', dpi=300)
-    plt.show()
+    # plt.show()
 
 
 def plot_energy_bills_for_policy(env: House, policy: list, rewards: np.ndarray, states: np.ndarray, plot_title: str):
-    actions = {0: 'DN', 1: 'R', 2: 'W', 3: 'C'}
-    colors = {'DN': 'black', 'R': 'red', 'W': 'green', 'C': 'blue'}
+    actions = {0: 'DN', 1: 'R', 2: 'W', 3: 'C', 4: 'R+W', 5: 'R+F', 6: 'W+F', 7: 'All'}
+    colors = {'DN': 'black', 'R': 'red', 'W': 'green', 'C': 'blue', 'R+W': 'pink', 'R+F': 'olive', 'W+F': 'purple', 'All': 'Brown' }
     # labels = {'DN': 'do nothing', 'R': 'roof', 'W': 'wall', 'C': 'cellar'}
     shape = np.shape(states)
     bill_per_state = np.zeros(shape=shape)
@@ -116,7 +116,7 @@ def plot_energy_bills_for_policy(env: House, policy: list, rewards: np.ndarray, 
         bill = env.energy_bills[state_name]
         bill_per_state[index] = bill
 
-    time_axis = np.arange(0, env.num_years, env.time_step)
+    time_axis = np.arange(0, env.num_years+env.time_step, env.time_step)
     plt.plot(time_axis, bill_per_state, marker='o', linestyle='-')
     for i, (xi, yi) in enumerate(zip(time_axis, bill_per_state)):
         k = int(states[i])
@@ -143,18 +143,19 @@ def plot_energy_bills_for_policy(env: House, policy: list, rewards: np.ndarray, 
 
     plt.grid()
     plt.savefig(f'{plot_title}.png', dpi=300)
-    plt.show()
+    # plt.show()
 
 if __name__ == "__main__":
-    print('House')
+    # print('House')
     env = House()
+    env.reset()
     print('zero')
     zero_policy = [0 for _ in range(env.observation_space.n)] #create a zero policy
 
     # print('Run_episodes zero')
     # # Evaluate "do-nothing" policy
-    print('Zero_policy episodes is starting')
-    total_costs_zero_policy, rewards_all_episodes_zero_policy, states_all_episodes_zero_policy = run_episodes(env=env, policy=zero_policy, num_episodes=1000)  # run the zero policy
+    # print('Zero_policy episodes is starting')
+    total_costs_zero_policy, rewards_all_episodes_zero_policy, states_all_episodes_zero_policy = run_episodes(env=env, policy=zero_policy, num_episodes=10000)  # run the zero policy
 
     # print('Run_episodes optimal')
     # # plot costs/policy/states for 1st episode
@@ -164,15 +165,15 @@ if __name__ == "__main__":
 
     # Evaluate using value iteration
     env.reset()
-    optimal_policy, optimal_value, num_iterations = value_iteration(env)
+    optimal_policy, optimal_value, num_iterations = value_iteration(env,continue_value_iteration=False)
     np.save('optimal_policy.npy',optimal_policy)
     np.save('optimal_value.npy',optimal_value)
     print(num_iterations)
     # optimal_policy = np.load('optimal_policy.npy')
     # optimal_value = np.load('optimal_value.npy')
-    # num_iterations = 3
-    print('Optimal_policy episodes  is starting')
-    total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=1000)
+    # num_iterations = 4
+    # print('Optimal_policy episodes  is starting')
+    total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=10000)
 
     # # plot costs/policy/states for 1st episode
     plot_costs_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[0], states_all_episodes_value_iteration[0], plot_title='Optimal_Policy')

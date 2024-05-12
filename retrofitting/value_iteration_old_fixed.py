@@ -6,18 +6,25 @@ import seaborn as sns
 import time
 
 
-def value_iteration(env: House):
+def value_iteration(env: House,continue_value_iteration):
+    delta_threshold = 1e-10
+    delta = 10
+    num_iterations = 0
+
     print('Value Iteration is starting')
     discount_factor = 0.97**env.time_step
-    # Initialise values of all states with 0
-    value_function = np.zeros(env.num_states)
-    q_values = np.zeros((env.num_states, 4))
-    optimal_action = np.zeros(env.observation_space.n, dtype=int)
+    if continue_value_iteration : 
+        q_values = np.load('q_values.npy')
+        value_function = np.load('value_function.npy')
+        optimal_action = np.load('optimal_action.npy') 
+        delta = np.load('delta.npy')   
+    else:
+        # Initialise values of all states with 0
+        value_function = np.zeros(env.num_states)
+        q_values = np.zeros((env.num_states, env.num_actions))
+        optimal_action = np.zeros(env.observation_space.n, dtype=int)
 
-    delta_threshold = 1e-20
-    delta = 10
 
-    num_iterations = 0
     # Fixed point iteration
     while delta > delta_threshold:
         num_iterations += 1
@@ -30,23 +37,38 @@ def value_iteration(env: House):
             # if idx_state: 
             #     continue
             old_value = value_function[idx_state]
-
+            # print(idx_state)
             # store Q values of all actions
-            for action in range(4):
+            for action in range(env.num_actions):
                 q_val = 0
+                
                 transition_probs = env.get_transition_probs(current_state=idx_state, action=action, time=0)
-                for current_tuple in transition_probs:
-                    prob, next_state, reward = current_tuple
-                    next_state = int(next_state)
-                    q_val += prob * (reward + discount_factor * value_function[next_state])
+                
+                # for current_array in transition_probs:
+                #     prob, next_state, reward = current_array
+                #     next_state = int(next_state)
+                #     q_val += prob * (reward + discount_factor * value_function[next_state])
+                
+                # print(f"Non efficient: q_val={q_val}")
+
+                first_part = np.sum(transition_probs[:, 0] * transition_probs[:, 2])
+                second_part = np.sum(value_function * transition_probs[:, 0] * discount_factor)
+                q_val = first_part + second_part
+                # print(f"Hopefully efficient: q_val_new={q_val_new}")
+
+              
                 q_values[idx_state, action] = q_val
+                np.save('q_values.npy',q_values)
 
             # value_function[state] = max(q_values)
             idx = np.random.choice(np.flatnonzero(q_values[idx_state, :] == max(q_values[idx_state, :])))
             optimal_action[idx_state] = idx
+            np.save('optimal_action.npy',optimal_action)
             value_function[idx_state] = q_values[idx_state, idx]
+            np.save('value_function.npy',value_function)
 
             delta = max([delta, np.abs(old_value - value_function[idx_state])])
+            np.save('delta.npy',delta)
     
     
     toc = time.time()
