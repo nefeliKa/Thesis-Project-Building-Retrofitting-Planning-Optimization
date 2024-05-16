@@ -24,6 +24,7 @@ def value_iteration(env: House,continue_value_iteration):
         q_values = np.zeros((env.num_states, env.num_actions))
         optimal_action = np.zeros(env.observation_space.n, dtype=int)
 
+    
 
     # Fixed point iteration
     while delta > delta_threshold:
@@ -36,30 +37,34 @@ def value_iteration(env: House,continue_value_iteration):
                 print(idx_state) 
             # if idx_state: 
             #     continue
+            transition_probs = env.get_transition_probs(state=idx_state)
             old_value = value_function[idx_state]
             # print(idx_state)
             # store Q values of all actions
             for action in range(env.num_actions):
+                # print('tic')
                 q_val = 0
                 
-                transition_probs = env.get_transition_probs(current_state=idx_state, action=action, time=0)
-                
-                # for current_array in transition_probs:
-                #     prob, next_state, reward = current_array
-                #     next_state = int(next_state)
-                #     q_val += prob * (reward + discount_factor * value_function[next_state])
-                
-                # print(f"Non efficient: q_val={q_val}")
-
-                first_part = np.sum(transition_probs[:, 0] * transition_probs[:, 2])
-                second_part = np.sum(value_function * transition_probs[:, 0] * discount_factor)
-                q_val = first_part + second_part
+                # transition_probs = env.get_transition_probs(current_state=idx_state, action=action, time=0) # [num_states X 3]
+                # transition_probs = env.transition_probabilities # [num_actions X num_states X 3]
+                # first_part = np.sum(transition_probs[:, 0] * transition_probs[:, 2])
+                # second_part = np.sum(value_function * transition_probs[:, 0] * discount_factor)
+                # q_val = first_part + second_part
                 # print(f"Hopefully efficient: q_val_new={q_val_new}")
 
-              
+
+                rewards = transition_probs[action,:, 2]
+                probabilities = transition_probs[action, :, 0]
+                next_states = transition_probs[action,:, 1].astype(int)
+
+                first_part = np.sum(rewards * probabilities)
+                second_part = np.sum(value_function * probabilities * discount_factor)
+                q_val = first_part + second_part
+
+
                 q_values[idx_state, action] = q_val
                 np.save('q_values.npy',q_values)
-
+                # print('toc')
             # value_function[state] = max(q_values)
             idx = np.random.choice(np.flatnonzero(q_values[idx_state, :] == max(q_values[idx_state, :])))
             optimal_action[idx_state] = idx
@@ -75,6 +80,7 @@ def value_iteration(env: House,continue_value_iteration):
     print('Value_iteration_finished:')
     print(toc-tic)
     return optimal_action, value_function, num_iterations
+
 
 
 
