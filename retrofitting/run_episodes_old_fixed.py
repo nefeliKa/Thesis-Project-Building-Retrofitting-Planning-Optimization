@@ -57,10 +57,10 @@ def plot_histogram_comparisons(data1, data2):
     plt.figure(figsize=(10, 5))
 
     # Plot histogram for data1
-    plt.hist(data1, bins='auto', color='blue', alpha=0.7, label='Do-nothing policy')
+    plt.hist(data1, bins=10, color='blue', alpha=0.7, label='Do-nothing policy')
 
     # Plot histogram for data2
-    plt.hist(data2, bins='auto', color='red', alpha=0.7, label='Optimal policy')
+    plt.hist(data2, bins=10, color='red', alpha=0.7, label='Optimal policy')
 
     plt.xlabel("Cost [€]")
     plt.ylabel("Frequency")
@@ -127,7 +127,7 @@ def plot_energy_bills_for_policy(env: House, policy: list, rewards: np.ndarray, 
         state = int(states[i])
         bill = int(bill_per_state[i])
         value = env.state_space[state]
-        letters = ['10','20','50']
+        letters = ['10','20','35']
         num0 = int(value[0])
         num1 = letters[int(value[1])]
         num2 = letters[int(value[2])]
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     # print('Run_episodes zero')
     # # Evaluate "do-nothing" policy
     # print('Zero_policy episodes is starting')
-    total_costs_zero_policy, rewards_all_episodes_zero_policy, states_all_episodes_zero_policy = run_episodes(env=env, policy=zero_policy, num_episodes=10000)  # run the zero policy
+    total_costs_zero_policy, rewards_all_episodes_zero_policy, states_all_episodes_zero_policy = run_episodes(env=env, policy=zero_policy, num_episodes=1000)  # run the zero policy
 
     # print('Run_episodes optimal')
     # # plot costs/policy/states for 1st episode
@@ -171,9 +171,9 @@ if __name__ == "__main__":
     print(num_iterations)
     # optimal_policy = np.load('optimal_policy.npy')
     # optimal_value = np.load('optimal_value.npy')
-    # num_iterations = 4
+    # num_iterations = 7
     # print('Optimal_policy episodes  is starting')
-    total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=10000)
+    total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=1000)
 
     # # plot costs/policy/states for 1st episode
     plot_costs_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[0], states_all_episodes_value_iteration[0], plot_title='Optimal_Policy')
