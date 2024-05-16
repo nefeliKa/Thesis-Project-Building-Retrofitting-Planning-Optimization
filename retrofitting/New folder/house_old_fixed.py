@@ -22,11 +22,8 @@ class House(Env):
         # 2,  # FIX_WALL
         # 3   # FIX_FACADE
         self.groundfloor_area = 75.40
-        # self.groundfloor_area = 40
         self.roof_area = 89.414567
-        # self.roof_area = 40
         self.facade_area = 210.80
-        # self.facade_area = 45
         self.cost_eps_floor_m2 = 28.91 #euros per m2
         self.cost_eps_facade_m2 = 162.73
         self.cost_eps_roof_m2 = 231.63 
@@ -36,7 +33,7 @@ class House(Env):
         self.current_state = 0
         self.time = 0
         self.num_years = 60
-        self.time_step = 20
+        self.time_step = 5
         self.action_space = spaces.Discrete(8)
         self.state_space = House.get_state_space(num_damage_states=self.num_damage_states,
                                                  num_years= self.num_years,
@@ -48,15 +45,15 @@ class House(Env):
         self.house_size_m2 = house_size_m2
 
         # # [cost_doNothing, cost_roof, cost_wall, cost_cellar]
-        self.renovation_costs = np.array([0, self.roof_cost, self.facade_cost, self.floor_cost,(self.roof_cost+self.facade_cost),(self.roof_cost+self.floor_cost),(self.facade_cost+self.floor_cost),(self.roof_cost+self.facade_cost+self.floor_cost)])  # 
+        self.renovation_costs = np.array([0, self.roof_cost, self.facade_cost, self.floor_cost,self.roof_cost+self.facade_cost,self.roof_cost+self.floor_cost,self.facade_cost+self.floor_cost,self.roof_cost+self.facade_cost+self.floor_cost])  # 
 
-        # self.degradation_rates = [0.0, 0.2, 0.35]
+        self.degradation_rates = [0.0, 0.2, 0.35]
         self.energy_bills = self.get_state_electricity_bill(state_space = self.state_space,kwh_per_state=self.kwh_per_state)
         self.rewards = self.calculate_reward(save= True)
         self.material_probability_matrices,self.action_matrices = \
-                                                self.import_gamma_probabilities(calculate_gamma_distribution_probabilities= True,
+                                                self.import_gamma_probabilities(calculate_gamma_distribution_probabilities= False,
                                                 step_size=self.time_step,SIMPLE_STUFF = True, 
-                                                N = 1000, do_plot= True, T = self.num_years+self.time_step,
+                                                N = 100000, do_plot= True, T = self.num_years+self.time_step,
                                                 save_probabilities = True)
         self.health_age_state_space, self.health_age_state_tansition_matrix = self.health_age_state_tansitions(num_damage_states= self.num_damage_states,num_years = self.num_years,material_probability_matrices = self.material_probability_matrices, action_matrices=self.action_matrices,time_step = self.time_step)        # self.state_transition_model = House.get_state_transition_model(num_actions=self.num_actions, state_space=self.state_space, time_step= self.time_step,num_years = self.num_years)
         self.state_transition_model = self.get_state_transition_model(num_actions=self.num_actions,
@@ -65,8 +62,7 @@ class House(Env):
                                                                       num_years = self.num_years,
                                                                       health_age_state_tansition_matrix =self.health_age_state_tansition_matrix,
                                                                       health_age_state_space= self.health_age_state_space,
-                                                                      load_saved_matrices = False)
-        # self.transition_probabilities = self.get_transition_probs()    
+                                                                      load_saved_matrices = True)
         # self.rewards = self.calculate_reward(save= True)
  
 ####################################################################################################
@@ -234,9 +230,7 @@ class House(Env):
 
                             new_probability = np.prod(future_states_probabilities)
                             sparse_matrices[action][current_state_index, future_state_index] = new_probability
-                        elif current_state[0] == num_years and current_state == future_state:
-                             sparse_matrices[action][current_state_index, future_state_index] = 1
-                            
+
 
             # Save each sparse matrix in the list separately
         # Save each sparse matrix in the list separately
@@ -280,15 +274,13 @@ class House(Env):
             action_costs = self.renovation_costs[action]
             state_name = self.state_space[current_state][1:4]
             total_energy_demand = self.kwh_per_state[tuple(state_name)]
-            if total_energy_demand >= 157:
+            if total_energy_demand > 210:
                 total_energy_demand = total_energy_demand * 2
-            total_energy_demand = total_energy_demand* 250 #multiply by square meters
             energy_bills = House.energy2euros(total_energy_demand)
-            if self.state_space[current_state][0] == 0:
+            if current_state == 0:
                 energy_bills = (energy_bills)
             else: 
                 energy_bills = (energy_bills)*self.time_step
-            # energy_bills = (energy_bills)*self.time_step
             # if total_energy_demand > 210:
             #      energy_bills = 100000
             # if  self.state_space[current_state][0] ==  0: 
@@ -324,13 +316,11 @@ class House(Env):
         else: 
             val = 1
         for indx in range(0,len(data)):
-        # for indx in range(0,len(data),val):
             kwh_per_m2 = data['energy[kWh/m2]'][indx]
             string = data['state'][indx]
             # Remove the parentheses and split the string by commas
             split_string = string.strip("()").split(", ")
             # Extract the first three numbers as integers
-            # state = tuple(int(num_str) -1 for num_str in split_string[:3])
             state = tuple(int(num_str)  for num_str in split_string[:3])
             dict[state] = kwh_per_m2  
             list.append(kwh_per_m2)
@@ -338,7 +328,7 @@ class House(Env):
         list3 = [list,list2]
         return list3,dict
 
-    def get_transition_probs_old(self, current_state: int, action: int, time: int):
+    def get_transition_probs(self, current_state: int, action: int, time: int):
         """
         Function that calculates probabilities.
         Parameters
@@ -358,44 +348,22 @@ class House(Env):
         reward : float
             The reward from taking the action.
         """
-        # transition_probabilities = np.zeros((self.num_states, 3))
-        transition_probabilities2 = np.zeros((self.num_states, 3))
+        transition_probabilities = np.zeros((self.num_states, 3))
         # print('before')
         # Convert the sparse matrix to a dense matrix
         probability_array = self.state_transition_model[action][current_state].toarray()[0]
         # print('btwn')
-        transition_probabilities2[:,0] = probability_array
-        transition_probabilities2[:,1] = np.arange(0,self.num_states)
-        transition_probabilities2[:,2] = self.rewards[action,current_state]
+        transition_probabilities[:,0] = probability_array
+        transition_probabilities[:,1] = np.arange(0,self.num_states)
+        transition_probabilities[:,2] = self.rewards[action]
         # for next_state in range(self.num_states):
         #     prob = probability_array[next_state]
         #     # reward = self.get_reward(action=action, current_state=current_state)
         #     reward = self.rewards[action,current_state]
         #     transition_probabilities[next_state, :] = [prob, next_state, reward]
         # print("after")
-        
-        return transition_probabilities2
 
-    def get_transition_probs(self,state):
-        # Initialize the transition_probabilities2 array with the appropriate shape
-        transition_probabilities2 = np.zeros((self.num_actions, self.num_states, 3))
-
-        for action in range(self.num_actions):
-            # Extract the transition probabilities for the given action and state
-            probability_array = self.state_transition_model[action][state].toarray()[0]
-            # [num_states x (action x (num.states x 3)) ]
-            # Assign transition probabilities, next states, and rewards
-            transition_probabilities2[action,:, 0] = probability_array
-            transition_probabilities2[action,:, 1] = np.arange(self.num_states)
-            transition_probabilities2[action,:, 2] = self.rewards[action, state]
-                #     prob = probability_array[next_state]
-                #     # reward = self.get_reward(action=action, current_state=current_state)
-                #     reward = self.rewards[action,current_state]
-                #     transition_probabilities[next_state, :] = [prob, next_state, reward]
-                # print("after")
-        
-        return transition_probabilities2
-
+        return transition_probabilities
 
     def reset(self):
         """
@@ -465,15 +433,14 @@ class House(Env):
 
 # if __name__=="__main__":
 #     env = House()
-#     env.get_transition_probs()
-# #     r = env.rewards
+#     r = env.rewards
 # # #     tryout = env.health_age_state_tansition_matrix
 # # # #     state= env.num_years
     
 # #     probs = env.state_transition_model
 
 
-    # print('bla')
+#     print('bla')
 
 
 

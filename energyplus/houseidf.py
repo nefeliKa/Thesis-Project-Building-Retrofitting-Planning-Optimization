@@ -47,19 +47,19 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity,
         coordinates=[(0, 0), (5.40,0), (5.40, 8.25), (0, 8.25)],
         height=6,
         num_stories=3,
-        # below_ground_stories=1,
-        # below_ground_storey_height=2.5,
+        below_ground_stories=1,
+        below_ground_storey_height=2.5,
         zoning='by_storey')
     idf.intersect_match()
-    print(idf.getsurfaces())
+    # print(idf.getsurfaces())
     
     #windows position and wwr
-    idf.set_wwr(wwr=0.40, orientation= 'south', wwr_map={0:0} )
-    idf.set_wwr(wwr=0.40,orientation= 'north', wwr_map={0:0} )
-    idf.set_wwr(wwr=0.40,orientation= 'west', wwr_map={0:0} )
+    idf.set_wwr(wwr=0.35, orientation= 'south', wwr_map={0:0} )
+    idf.set_wwr(wwr=0.35,orientation= 'north', wwr_map={0:0} )
+    # idf.set_wwr(wwr=0.35,orientation= 'west', wwr_map={0:0} )
 
     # Show 3D model
-    # idf.view_model()
+    idf.view_model()
 
     ##############Change info about the house
     #######Windows
@@ -74,10 +74,13 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity,
 
     #######Add Insulation Material 
     original_conductivity =  0.35
-    roof_conductivity = (original_conductivity*r_new_conductivity)+original_conductivity
-    wall_conductivity = (original_conductivity*w_new_conductivity)+original_conductivity
-    floor_conductivity = (original_conductivity*f_new_conductivity)+ original_conductivity
+    new_cond = original_conductivity/(1-r_new_conductivity)
+    roof_conductivity = original_conductivity/(1-r_new_conductivity)
+    wall_conductivity = original_conductivity/(1-w_new_conductivity)
+    floor_conductivity = original_conductivity/(1-f_new_conductivity)
     roof_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorRoofInsulation", Thickness = 0.2,Specific_Heat = 1400, Conductivity = roof_conductivity, Density = 25, Roughness = 'Smooth')
+    print(idf.newidfobject('MATERIAL'))
+
     wall_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorWallInsulation", Thickness = 0.2,Specific_Heat = 1400, Conductivity = wall_conductivity, Density = 25, Roughness = 'Smooth')
     groundfloor_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorFloorInsulation", Thickness = 0.2,Specific_Heat = 1400, Conductivity = floor_conductivity, Density = 25, Roughness = 'Smooth')
     # roof_insulation_material = idf.newidfobject('MATERIAL',  Name = "ExteriorRoofInsulation", Thickness = 0.05,Specific_Heat = 1400, Conductivity = original_conductivity, Density = 25, Roughness = 'Smooth')
@@ -120,7 +123,7 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity,
     fenestration = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']
     del fenestration[2]
     del fenestration[-1]
-    
+    print(fenestration)
 
     #Surface Boundary Conditions
     s_bcs = [surface.Outside_Boundary_Condition for surface in surfaces]
@@ -145,19 +148,19 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity,
     # Filter out walls without windows and make them adiabatic
     surfaces = idf.idfobjects['BUILDINGSURFACE:DETAILED']
     fenestration = idf.idfobjects['FENESTRATIONSURFACE:DETAILED']  # Assuming you have fenestration surfaces defined
+    walls_with_windows = []
+    for surface in range(len(surfaces)):
+        blu = surfaces[surface]['Name']
+        #HEre check if the fenestration and the surface have similar
+        for fen in range(len(fenestration)): 
+            bla = fenestration[fen]['Building_Surface_Name']
+            if blu == bla :
+                surfaces[surface].Construction_Name = "Wall_Structure"
+                walls_with_windows.append(bla)
+            else :
+                surfaces[surface].Construction_Name = "Wall_Structure"
+                surfaces[surface].Outside_Boundary_Condition = "Adiabatic"
 
-    for surface in surfaces:
-        if surface.Surface_Type == "wall":
-            windw = 'window'
-            surface_name = surface.Name + ' ' + windw
-            # print(surface_name)
-            #HEre check if the fenestration and the surface have similar
-            for fen in fenestration: 
-                if fen.Building_Surface_Name == surface_name :
-                    surface.Construction_Name = "Wall_Structure"
-                    surface.Outside_Boundary_Condition = "Adiabatic"
-                else :
-                    surface.Construction_Name = "Wall_Structure"
 
     # Input Site information
     site_info = idf.idfobjects['SITE:LOCATION'][0]
@@ -176,20 +179,8 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity,
     SimC.Do_Plant_Sizing_Calculation = 'No'
     SimC.Run_Simulation_for_Weather_File_Run_Periods = 'Yes'
 
-    stat = idf.newidfobject("HVACTEMPLATE:THERMOSTAT",Name="Zone Stat", Constant_Heating_Setpoint=20,Constant_Cooling_Setpoint=25,)
+    stat = idf.newidfobject("HVACTEMPLATE:THERMOSTAT",Name="Zone Stat", Constant_Heating_Setpoint=20,Constant_Cooling_Setpoint=25)
 
-    # heatpump = idf.newidfobject("HVACTEMPLATE:ZONE:WATERTOAIRHEATPUMP")
-    # heatpump.Heat_Pump_Heating_Coil_Gross_Rated_COP =3 
-    # heatpump.Template_Thermostat_Name = 'Zone Stat'
-    
-    
-    # heating = idf.newidfobject('COIL:HEATING:FUEL')
-    # heating.Name = 'Block 1'
-    # heating.Availability_Schedule_Name = 'AvailSched'
-    # heating.Fuel_Type = 'NaturalGas'
-    # heating.Burner_Efficiency = 0.6
-    # heating.Air_Inlet_Node_Name = 'Block House Storey 0'
-    # heating.Air_Outlet_Node_Name = 'Block House Storey 1'
 
     hotwater = idf.newidfobject('BOILER:HOTWATER')
     hotwater.Name = 'Central Boiler'
@@ -207,30 +198,14 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity,
     hotwater.Water_Outlet_Upper_Temperature_Limit = 100
     hotwater.Boiler_Flow_Mode = 'LeavingSetpointModulated'
 
-    airtightness = idf.newidfobject('AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING')
-    print(airtightness)
-    airtightness.Name = 'Window 1'
-    airtightness.Air_Mass_Flow_Coefficient_When_Opening_is_Closed = 0.01
-    airtightness.Air_Mass_Flow_Exponent_When_Opening_is_Closed = 0.65
-    airtightness.Number_of_Sets_of_Opening_Factor_Data = 2
-    airtightness.Opening_Factor_2 = 1
-
-    airtightness_zone =  idf.newidfobject('AIRFLOWNETWORK:MULTIZONE:ZONE')
-    airtightness_zone.Zone_Name = 'Block House Storey 0'
-    airtightness_zone.Ventilation_Control_Mode = 'Temperature'
-
-    airtightness_surface = idf.newidfobject('AIRFLOWNETWORK:MULTIZONE:SURFACE')
-    print(airtightness_surface)
-    airtightness_surface.Surface_Name = 'Block House Storey 0 Wall 0001'
-    airtightness_surface.Leakage_Component_Name = 'Crack 1'
-
-
+  
+    
 
     for zone in idf.idfobjects["ZONE"]:
             idf.newidfobject("HVACTEMPLATE:ZONE:IDEALLOADSAIRSYSTEM",Zone_Name=zone.Name,Template_Thermostat_Name=stat.Name,)
 
 
-    print(idf.idfobjects["ZONE"])
+    # print(idf.idfobjects["ZONE"])
 
     idf.newidfobject("OUTPUT:VARIABLE", Key_Value ="Block House Storey 0",Variable_Name = 'Zone Air Infiltration Rate', Reporting_Frequency="Hourly")
     idf.newidfobject("OUTPUT:VARIABLE", Key_Value ="Central Boiler",Variable_Name = 'Boiler Gas Rate', Reporting_Frequency="Hourly")
@@ -270,120 +245,17 @@ for r_deg_percentage in insulation_r:
             for window_percentage in insulation_window:
                 filepath, result = create_simulation(r_deg_percentage, w_deg_percentage, f_deg_percentage, window_percentage)
                 file_name_list.append(result)
-            
-# Convert list to string
-list_as_string = ', '.join(map(str, file_name_list))
 
+
+
+# # Convert list to string
+list_as_string = ', '.join(map(str, file_name_list))
+# list_as_string = ', '.join(map(str, 'tryout'))
 # Specify the file path
 file_path = 'my_list.txt'
 
 # Write the string to the file
 with open(file_path, 'w') as file:
     file.write(list_as_string)                   
-
-
-########################################SIMULATION######################################
-
-# #  Helper class to extract total energy use in kWh, via the esopackage
-# class ESO:
-#     def __init__(self, path):
-#         self.dd, self.data = esoreader.read(path)
-
-#     def read_var(self, variable, frequency="Hourly"):
-#         return [
-#             {"key": k, "series": self.data[self.dd.index[frequency, k, variable]]}
-#             for _f, k, _v in self.dd.find_variable(variable)
-#         ]
-
-#     def total_kwh(self, variable, frequency="Hourly"):
-#         j_per_kwh = 3_600_000
-#         results = self.read_var(variable, frequency)
-#         return sum(sum(s["series"]) for s in results) / j_per_kwh
-
-
-# # #######################################POST PROCESSING######################################
-# results = []
-# for name in file_name_list: 
-#     eso = ESO(os.path.join(filepath, name,".eso"))
-#     heat = eso.total_kwh("Zone Ideal Loads Supply Air Total Heating Energy")
-#     cool = eso.total_kwh("Zone Ideal Loads Supply Air Total Cooling Energy")
-#     results.append([heat, cool, heat + cool])
-#     # idf.run( )
-
-#     headers = ["Heat", "Cool", "Total"]
-#     header_format = "{:>10}" * (len(headers))
-#     row_format = "{:>10.1f}" * (len(headers))
-#     print(header_format.format(*headers))
-#     for row in results:
-#         print(row_format.format(*row))
-
-
-
-#     # Path to the .tbl results file
-#     tbl_file_path = os.path.join(simulations_dir, f"{file_name}.tbl")
-
-#     # Check if the .tbl file exists
-#     if os.path.exists(tbl_file_path):
-#         # Read .tbl file
-#         with open(tbl_file_path, 'r') as file:
-#             fhandle = file.read()
-#             htables = readhtml.titletable(fhandle)
-#             site_energy_t = htables[0][1]
-#             net_energy_mj = site_energy_t[2][3]
-#             net_energy_kwh = net_energy_mj * 0.28
-#             # return net_energy_kwh
-
-# class ESO:
-#         def __init__(self, path):
-#             self.dd, self.data = esoreader.read(path)
-        
-#         def read_var(self, variable, frequency="Hourly"):
-#             return [
-#                 {"key": k, "series": self.data[self.dd.index[frequency, k, variable]]}
-#                 for _f, k, _v in self.dd.find_variable(variable)
-#             ]
-        
-#         def total_kwh(self, variable, frequency="Hourly"):
-#             j_per_kwh = 3_600_000
-#             results = self.read_var(variable, frequency)
-#             return sum(sum(s["series"]) for s in results) / j_per_kwh
-        
-
-# results = []
-# for in 
-#     eso = ESO(f"tests/tutorial/{north}_{south}_out.eso")
-#     heat = eso.total_kwh("Zone Ideal Loads Supply Air Total Heating Energy")
-#     cool = eso.total_kwh("Zone Ideal Loads Supply Air Total Cooling Energy")
-
-
-
-
-# trial_simulations_dir = os.path.join(output_dir, "trial_simulation")
-# degradation_list = [10,20,40]
-# insultation_r = [i / 100 for i in degradation_list]
-# print(insultation_r)
-# insultation_w = [i / 100 for i in degradation_list]
-# print(insultation_w)
-# insultation_f = [i / 100 for i in degradation_list]
-# print(insultation_f)
-
-# for r_deg_percentage in insultation_r(): 
-#         for w_deg_percentage in insultation_w():
-#              for f_deg_percentage in insultation_f():
-#                 create_simulation()
-
-# from eppy.results import readhtml
-# import pprint
-
-# fresults = os.path.join(simulations_dir,"eplustbl.htm")
-# fhandle = open(fresults, 'r').read()
-# htables = readhtml.titletable(fhandle)
-# site_energy_t = htables[0][1]
-# pp = pprint.PrettyPrinter()
-# net_energy_mj = site_energy_t[2][3]
-# net_energy_kwh = net_energy_mj*0.28
-# print(net_energy_kwh)
-
-
 
 
