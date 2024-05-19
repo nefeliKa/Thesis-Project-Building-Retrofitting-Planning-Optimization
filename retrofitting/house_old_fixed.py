@@ -280,8 +280,8 @@ class House(Env):
             action_costs = self.renovation_costs[action]
             state_name = self.state_space[current_state][1:4]
             total_energy_demand = self.kwh_per_state[tuple(state_name)]
-            if total_energy_demand >= 174:
-                total_energy_demand = total_energy_demand * 2
+            # if total_energy_demand >= 174:
+            #     total_energy_demand = total_energy_demand * 2
             total_energy_demand = total_energy_demand* 250 #multiply by square meters
             energy_bills = House.energy2euros(total_energy_demand)
             if self.state_space[current_state][0] == 0:

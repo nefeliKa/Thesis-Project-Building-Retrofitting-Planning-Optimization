@@ -169,14 +169,14 @@ if __name__ == "__main__":
 
     # Evaluate using value iteration
     env.reset()
-    # optimal_policy, optimal_value, num_iterations = value_iteration(env,continue_value_iteration=False)
-    # np.save('optimal_policy.npy',optimal_policy)
-    # np.save('optimal_value.npy',optimal_value)
-    # print(num_iterations)
-    optimal_policy = np.load('optimal_policy.npy')
-    optimal_value = np.load('optimal_value.npy')
-    num_iterations = 7
-    print('Optimal_policy episodes  is starting')
+    optimal_policy, optimal_value, num_iterations = value_iteration(env,continue_value_iteration=False)
+    np.save('optimal_policy.npy',optimal_policy)
+    np.save('optimal_value.npy',optimal_value)
+    print(num_iterations)
+    # optimal_policy = np.load('optimal_policy.npy')
+    # optimal_value = np.load('optimal_value.npy')
+    # num_iterations = 7
+    # print('Optimal_policy episodes  is starting')
     total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=1000)
 
     # # plot costs/policy/states for 1st episode
