@@ -71,6 +71,8 @@ def plot_histogram_comparisons(data1, data2):
 
 
 def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states: np.ndarray, plot_title: str):
+    plt.close()
+
     actions = {0: 'DN', 1: 'R', 2: 'W', 3: 'C', 4: 'R+W', 5: 'R+F', 6: 'W+F', 7: 'All'}
     colors = {'DN': 'black', 'R': 'red', 'W': 'green', 'C': 'blue', 'R+W': 'pink', 'R+F': 'olive', 'W+F': 'purple', 'All': 'Brown' }
     # labels = {'DN': 'do nothing', 'R': 'roof', 'W': 'wall', 'C': 'cellar'}
@@ -81,7 +83,7 @@ def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states:
         k = int(states[i])
         string = actions[policy[k]]
         plt.text(xi, yi, string, color=colors[string], weight='bold', ha='center', va='bottom')
-
+ 
     for i, (xi, yi) in enumerate(zip(time_axis, rewards)):
         state = int(states[i])
         value = env.state_space[state]
@@ -105,6 +107,8 @@ def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states:
 
 
 def plot_energy_bills_for_policy(env: House, policy: list, rewards: np.ndarray, states: np.ndarray, plot_title: str):
+    plt.close()
+
     actions = {0: 'DN', 1: 'R', 2: 'W', 3: 'C', 4: 'R+W', 5: 'R+F', 6: 'W+F', 7: 'All'}
     colors = {'DN': 'black', 'R': 'red', 'W': 'green', 'C': 'blue', 'R+W': 'pink', 'R+F': 'olive', 'W+F': 'purple', 'All': 'Brown' }
     # labels = {'DN': 'do nothing', 'R': 'roof', 'W': 'wall', 'C': 'cellar'}
@@ -127,7 +131,7 @@ def plot_energy_bills_for_policy(env: House, policy: list, rewards: np.ndarray, 
         state = int(states[i])
         bill = int(bill_per_state[i])
         value = env.state_space[state]
-        letters = ['10','20','35']
+        letters = ['0','20','40']
         num0 = int(value[0])
         num1 = letters[int(value[1])]
         num2 = letters[int(value[2])]
@@ -159,25 +163,26 @@ if __name__ == "__main__":
 
     # print('Run_episodes optimal')
     # # plot costs/policy/states for 1st episode
-
-    plot_costs_for_policy(env, zero_policy, rewards_all_episodes_zero_policy[0], states_all_episodes_zero_policy[0], plot_title='Do_nothing')
-    plot_energy_bills_for_policy(env, zero_policy, rewards_all_episodes_zero_policy[0], states_all_episodes_zero_policy[0], plot_title='Do_nothing_Energy_bill')
+    for i in range(3):
+        plot_costs_for_policy(env, zero_policy, rewards_all_episodes_zero_policy[i], states_all_episodes_zero_policy[i], plot_title=f'Do_nothing_{i}')
+        plot_energy_bills_for_policy(env, zero_policy, rewards_all_episodes_zero_policy[i], states_all_episodes_zero_policy[i], plot_title=f'Do_nothing_Energy_bill{i}')
 
     # Evaluate using value iteration
     env.reset()
-    optimal_policy, optimal_value, num_iterations = value_iteration(env,continue_value_iteration=False)
-    np.save('optimal_policy.npy',optimal_policy)
-    np.save('optimal_value.npy',optimal_value)
-    print(num_iterations)
-    # optimal_policy = np.load('optimal_policy.npy')
-    # optimal_value = np.load('optimal_value.npy')
-    # num_iterations = 7
-    # print('Optimal_policy episodes  is starting')
+    # optimal_policy, optimal_value, num_iterations = value_iteration(env,continue_value_iteration=False)
+    # np.save('optimal_policy.npy',optimal_policy)
+    # np.save('optimal_value.npy',optimal_value)
+    # print(num_iterations)
+    optimal_policy = np.load('optimal_policy.npy')
+    optimal_value = np.load('optimal_value.npy')
+    num_iterations = 7
+    print('Optimal_policy episodes  is starting')
     total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=1000)
 
     # # plot costs/policy/states for 1st episode
-    plot_costs_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[0], states_all_episodes_value_iteration[0], plot_title='Optimal_Policy')
-    plot_energy_bills_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[0], states_all_episodes_value_iteration[0], plot_title='Optimal_Policy_Energy_bill')
+    for i in range(3):
+        plot_costs_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[i], states_all_episodes_value_iteration[i], plot_title=f'Optimal_Policy_{i}')
+        plot_energy_bills_for_policy(env, optimal_policy, rewards_all_episodes_value_iteration[i], states_all_episodes_value_iteration[i], plot_title=f'Optimal_Policy_Energy_bill_{i}')
     print(f"Number of iterations for optimal policy: {num_iterations}")
     plot_histogram_comparisons(total_costs_zero_policy, total_costs_value_iteration)
 

@@ -280,7 +280,7 @@ class House(Env):
             action_costs = self.renovation_costs[action]
             state_name = self.state_space[current_state][1:4]
             total_energy_demand = self.kwh_per_state[tuple(state_name)]
-            if total_energy_demand >= 157:
+            if total_energy_demand >= 174:
                 total_energy_demand = total_energy_demand * 2
             total_energy_demand = total_energy_demand* 250 #multiply by square meters
             energy_bills = House.energy2euros(total_energy_demand)
@@ -338,43 +338,6 @@ class House(Env):
         list3 = [list,list2]
         return list3,dict
 
-    def get_transition_probs_old(self, current_state: int, action: int, time: int):
-        """
-        Function that calculates probabilities.
-        Parameters
-        ----------
-        current_state : int
-            The current state index.
-        action : int
-            The action index.
-        time : int
-            The current time in the episode.
-        Returns
-        -------
-        transition_probs : array
-            The transition probabilities for next states.
-        next_state : int
-            The next state index.
-        reward : float
-            The reward from taking the action.
-        """
-        # transition_probabilities = np.zeros((self.num_states, 3))
-        transition_probabilities2 = np.zeros((self.num_states, 3))
-        # print('before')
-        # Convert the sparse matrix to a dense matrix
-        probability_array = self.state_transition_model[action][current_state].toarray()[0]
-        # print('btwn')
-        transition_probabilities2[:,0] = probability_array
-        transition_probabilities2[:,1] = np.arange(0,self.num_states)
-        transition_probabilities2[:,2] = self.rewards[action,current_state]
-        # for next_state in range(self.num_states):
-        #     prob = probability_array[next_state]
-        #     # reward = self.get_reward(action=action, current_state=current_state)
-        #     reward = self.rewards[action,current_state]
-        #     transition_probabilities[next_state, :] = [prob, next_state, reward]
-        # print("after")
-        
-        return transition_probabilities2
 
     def get_transition_probs(self,state):
         # Initialize the transition_probabilities2 array with the appropriate shape

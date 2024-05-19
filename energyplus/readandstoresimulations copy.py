@@ -4,6 +4,9 @@ import os
 from eppy.results import readhtml
 import pprint
 import pandas as pd
+import time
+
+start_time = time.time()  # Record the start time
 
 # #######################################SIMULATION######################################
 
@@ -54,9 +57,9 @@ import re
 pattern = r'\((\d+\.\d+)\)'
 
 degradations2states = {
-    "0.05": 0,
+    "0.0": 0,
     "0.2": 1,
-    "0.35": 2
+    "0.43": 2
 }
 
 # Iterate over all files in the directory
@@ -89,3 +92,9 @@ for file in os.listdir(output_directory):
 
 
 dataframe.to_csv('building_scenarios.csv', index=False)
+
+
+end_time = time.time()  # Record the end time
+execution_time = end_time - start_time  # Calculate the execution time
+
+print("Total execution time: {:.2f} seconds".format(execution_time))

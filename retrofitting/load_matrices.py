@@ -24,21 +24,25 @@ import numpy as np
 sparse_matrix_loaded = load_npz('sparse_matrix_action_7.npz')
 
 states = np.load('state_space.npy')
+
+
+# Save NumPy array to CSV
+np.savetxt('states.csv', states, delimiter=',', fmt='%d')
 # Convert the sparse matrix to a dense matrix
-dense_matrix = sparse_matrix_loaded.toarray()
-list = []
-for i in range(len(states)): 
-    sm = np.sum(dense_matrix[i])
-    if sm > 1.0000000000000004 or sm < 0.994:
-        list.append(i)
+# dense_matrix = sparse_matrix_loaded.toarray()
+# list = []
+# for i in range(len(states)): 
+#     sm = np.sum(dense_matrix[i])
+#     if sm > 1.0000000000000004 or sm < 0.994:
+#         list.append(i)
 
 
 # print(list)
 # print(list)
-p= np.load('optimal_policy.npy')
-v =np.load('q_values.npy')
+# p= np.load('optimal_policy.npy')
+# v =np.load('q_values.npy')
 
-action_ar = np.load('action_array.npy')
-n =action_ar[7]
+# # action_ar = np.load('action_array.npy')
+# n =action_ar[7]
 print('bla')
 # Now you can use sparse_matrix_loaded as a regular CSR format sparse matrix

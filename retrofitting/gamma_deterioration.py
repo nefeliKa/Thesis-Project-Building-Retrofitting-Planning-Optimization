@@ -10,12 +10,11 @@ def matrices_gen(SIMPLE_STUFF:bool, N:int, T:int, do_plot:bool,step_size:int,sav
     # SIMPLE_STUFF = True
     # do_plot = False
     def custom_gamma(a, b, t, beta):
-        # TODO: understand why the shape, scale are selected like this. Maybe more info on the paper??
         x = np.random.gamma(shape=a * t**beta - a * (t - 1)**beta, scale = b)
         return x
 
 
-    mean = 0.4251371301399517                                             # the mean descibes the fianl degradation that the material 
+    mean = 0.4343905423150753                                           # the mean descibes the fianl degradation that the material 
                                                             # will have at the end of the time period  T
     beta = 0.15                                              # beta descibes the curvature and direction of the curve. 
                                                             #For a more steep curve beta shoudl be lower than 1.                                                                   
@@ -53,7 +52,7 @@ def matrices_gen(SIMPLE_STUFF:bool, N:int, T:int, do_plot:bool,step_size:int,sav
         # plt.show()
 
     # Define custom categories
-    categories = [10, 20, 100]
+    categories = [5, 20, 100]
     # Categorize deterioration values into custom categories
     Dlabel = deterioration.copy()
     for n in range(N): 

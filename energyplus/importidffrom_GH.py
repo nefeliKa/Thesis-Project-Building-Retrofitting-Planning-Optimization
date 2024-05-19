@@ -2,6 +2,9 @@ from eppy import modeleditor
 from eppy.modeleditor import IDF
 import os
 from geomeppy import IDF
+import time
+
+start_time = time.time()  # Record the start time
 
 
 def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity):
@@ -64,7 +67,7 @@ def create_simulation(r_new_conductivity, w_new_conductivity,f_new_conductivity)
 
 
 
-degradation_list = [5, 20, 35]
+degradation_list = [0, 20, 43]
 insulation_r = [i / 100 for i in degradation_list]
 insulation_w = [i / 100 for i in degradation_list]
 insulation_f = [i / 100 for i in degradation_list]
@@ -94,3 +97,9 @@ file_path = 'my_list.txt'
 # Write the string to the file
 with open(file_path, 'w') as file:
     file.write(list_as_string)   
+
+
+end_time = time.time()  # Record the end time
+execution_time = end_time - start_time  # Calculate the execution time
+
+print("Total execution time: {:.2f} seconds".format(execution_time))
