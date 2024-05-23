@@ -159,7 +159,7 @@ if __name__ == "__main__":
     # print('Run_episodes zero')
     # # Evaluate "do-nothing" policy
     # print('Zero_policy episodes is starting')
-    total_costs_zero_policy, rewards_all_episodes_zero_policy, states_all_episodes_zero_policy = run_episodes(env=env, policy=zero_policy, num_episodes=1000)  # run the zero policy
+    total_costs_zero_policy, rewards_all_episodes_zero_policy, states_all_episodes_zero_policy = run_episodes(env=env, policy=zero_policy, num_episodes=1000000)  # run the zero policy
 
     # print('Run_episodes optimal')
     # # plot costs/policy/states for 1st episode
@@ -177,7 +177,7 @@ if __name__ == "__main__":
     # optimal_value = np.load('optimal_value.npy')
     # num_iterations = 7
     # print('Optimal_policy episodes  is starting')
-    total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=1000)
+    total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=1000000)
 
     # # plot costs/policy/states for 1st episode
     for i in range(3):

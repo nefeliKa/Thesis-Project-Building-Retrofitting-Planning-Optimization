@@ -36,7 +36,7 @@ class House(Env):
         self.current_state = 0
         self.time = 0
         self.num_years = 60
-        self.time_step = 20
+        self.time_step = 5
         self.action_space = spaces.Discrete(8)
         self.state_space = House.get_state_space(num_damage_states=self.num_damage_states,
                                                  num_years= self.num_years,
@@ -56,7 +56,7 @@ class House(Env):
         self.material_probability_matrices,self.action_matrices = \
                                                 self.import_gamma_probabilities(calculate_gamma_distribution_probabilities= True,
                                                 step_size=self.time_step,SIMPLE_STUFF = True, 
-                                                N = 1000, do_plot= True, T = self.num_years+self.time_step,
+                                                N = 1000000, do_plot= True, T = self.num_years+self.time_step,
                                                 save_probabilities = True)
         self.health_age_state_space, self.health_age_state_tansition_matrix = self.health_age_state_tansitions(num_damage_states= self.num_damage_states,num_years = self.num_years,material_probability_matrices = self.material_probability_matrices, action_matrices=self.action_matrices,time_step = self.time_step)        # self.state_transition_model = House.get_state_transition_model(num_actions=self.num_actions, state_space=self.state_space, time_step= self.time_step,num_years = self.num_years)
         self.state_transition_model = self.get_state_transition_model(num_actions=self.num_actions,
