@@ -57,10 +57,10 @@ def plot_histogram_comparisons(data1, data2):
     plt.figure(figsize=(10, 5))
 
     # Plot histogram for data1
-    plt.hist(data1, bins=10, color='blue', alpha=0.7, label='Do-nothing policy')
+    plt.hist(data1, bins='auto', color='blue', alpha=0.7, label='Do-nothing policy')
 
     # Plot histogram for data2
-    plt.hist(data2, bins=10, color='red', alpha=0.7, label='Optimal policy')
+    plt.hist(data2, bins='auto', color='red', alpha=0.7, label='Optimal policy')
 
     plt.xlabel("Cost [€]")
     plt.ylabel("Frequency")
@@ -87,7 +87,7 @@ def plot_costs_for_policy(env: House, policy: list, rewards: np.ndarray, states:
     for i, (xi, yi) in enumerate(zip(time_axis, rewards)):
         state = int(states[i])
         value = env.state_space[state]
-        letters = ['10%','20%','50%']
+        letters = ['10%','20%','40%']
         num0 = int(value[0])
         num1 = letters[int(value[1])]
         num2 = letters[int(value[2])]
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     print(num_iterations)
     # optimal_policy = np.load('optimal_policy.npy')
     # optimal_value = np.load('optimal_value.npy')
-    # num_iterations = 7
+    # num_iterations = 13
     # print('Optimal_policy episodes  is starting')
     total_costs_value_iteration, rewards_all_episodes_value_iteration, states_all_episodes_value_iteration = run_episodes(env=env, policy=optimal_policy, num_episodes=1000000)
 

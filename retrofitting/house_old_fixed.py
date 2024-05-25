@@ -36,7 +36,7 @@ class House(Env):
         self.current_state = 0
         self.time = 0
         self.num_years = 60
-        self.time_step = 5
+        self.time_step = 10
         self.action_space = spaces.Discrete(8)
         self.state_space = House.get_state_space(num_damage_states=self.num_damage_states,
                                                  num_years= self.num_years,
@@ -249,7 +249,7 @@ class House(Env):
                                     step_size:int,SIMPLE_STUFF: bool, N :int, do_plot: bool,T:int,
                                     save_probabilities:bool):           
         if calculate_gamma_distribution_probabilities == False:
-            load = np.load("transition_matrices.npy")
+            load = np.load("gamma_probabilities.npy")
         else : 
             load = matrices_gen(SIMPLE_STUFF = True, N = N, T = T, do_plot = do_plot,step_size = step_size,save_probabilities=save_probabilities)
         probability_matrices = load 
@@ -280,8 +280,8 @@ class House(Env):
             action_costs = self.renovation_costs[action]
             state_name = self.state_space[current_state][1:4]
             total_energy_demand = self.kwh_per_state[tuple(state_name)]
-            # if total_energy_demand >= 174:
-            #     total_energy_demand = total_energy_demand * 2
+            if total_energy_demand >= 174:
+                total_energy_demand = total_energy_demand * 2
             total_energy_demand = total_energy_demand* 250 #multiply by square meters
             energy_bills = House.energy2euros(total_energy_demand)
             if self.state_space[current_state][0] == 0:
@@ -428,6 +428,8 @@ class House(Env):
 
 # if __name__=="__main__":
 #     env = House()
+#     costs = env.renovation_costs
+#     print(costs)
 #     env.get_transition_probs()
 # #     r = env.rewards
 # # #     tryout = env.health_age_state_tansition_matrix
