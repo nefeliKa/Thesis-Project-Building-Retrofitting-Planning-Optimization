@@ -16,7 +16,7 @@ def matrices_gen(SIMPLE_STUFF:bool, N:int, T:int, do_plot:bool,step_size:int,sav
 
     mean = 0.4343905423150753                                           # the mean descibes the fianl degradation that the material 
                                                             # will have at the end of the time period  T
-    beta = 0.15                                              # beta descibes the curvature and direction of the curve. 
+    beta = 1.2                                            # beta descibes the curvature and direction of the curve. 
                                                             #For a more steep curve beta shoudl be lower than 1.                                                                   
     std = 0.15 * mean
     # T = 60                                                  # number of years 
@@ -121,7 +121,7 @@ def matrices_gen(SIMPLE_STUFF:bool, N:int, T:int, do_plot:bool,step_size:int,sav
 
 # if __name__=="__main__":
 
-#     p = matrices_gen(N = 1000000, T= 50, do_plot =True,step_size= 5,SIMPLE_STUFF=True,save_probabilities= True)
+#     p = matrices_gen(N = 10000, T= 50, do_plot =True,step_size= 5,SIMPLE_STUFF=True,save_probabilities= True)
 
 #     print(p)
 

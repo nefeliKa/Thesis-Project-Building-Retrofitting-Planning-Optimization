@@ -43,7 +43,7 @@ multiplier = -3
 
 # fig, ax = plt.subplots(layout='constrained')
 # Change the figsize parameter to adjust the size of the figure
-fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
+fig, ax = plt.subplots(figsize=(12, 8), constrained_layout=True)
 
 
 for attribute, measurement in action_dictionary.items():

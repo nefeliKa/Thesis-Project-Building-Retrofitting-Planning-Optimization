@@ -25,11 +25,11 @@ class House(Env):
         # self.groundfloor_area = 40
         self.roof_area = 89.414567
         # self.roof_area = 40
-        self.facade_area = 210.80
+        self.facade_area = 267.52
         # self.facade_area = 45
-        self.cost_eps_floor_m2 = 28.91 #euros per m2
+        self.cost_eps_floor_m2 = 34.68 #euros per m2
         self.cost_eps_facade_m2 = 162.73
-        self.cost_eps_roof_m2 = 231.63 
+        self.cost_eps_roof_m2 = 149.96
         self.floor_cost = self.groundfloor_area * self.cost_eps_floor_m2
         self.facade_cost = self.facade_area * self.cost_eps_facade_m2
         self.roof_cost = self.roof_area * self.cost_eps_roof_m2
@@ -280,8 +280,8 @@ class House(Env):
             action_costs = self.renovation_costs[action]
             state_name = self.state_space[current_state][1:4]
             total_energy_demand = self.kwh_per_state[tuple(state_name)]
-            if total_energy_demand >= 174:
-                total_energy_demand = total_energy_demand * 2
+            # if total_energy_demand >= 174:
+            #     total_energy_demand = total_energy_demand * 2
             total_energy_demand = total_energy_demand* 250 #multiply by square meters
             energy_bills = House.energy2euros(total_energy_demand)
             if self.state_space[current_state][0] == 0:
