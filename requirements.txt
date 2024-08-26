@@ -1,3 +1,8 @@
 numpy
 gym == 0.15.4
-
+matplotlib
+pandas
+eppy
+geomeppy
+esoreader
+seaborn
