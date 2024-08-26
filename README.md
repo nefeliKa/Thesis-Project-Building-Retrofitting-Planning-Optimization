@@ -11,7 +11,7 @@
 
 
 ### Thesis code development
-1. Clone this repo: `git clone git@github.com:jakeChal/nefeli-thesis.git`
+1. Clone this repo: `git clone git@github.com:nefeliKa/nefeli-thesis.git`
 2. Create a venv, activate it and install python packages:  
    `pip install -r requirements.txt`
 3. Run:  
